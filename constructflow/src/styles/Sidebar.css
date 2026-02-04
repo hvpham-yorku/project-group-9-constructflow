@@ -63,8 +63,11 @@
 }
 
 .nav-icon {
-  font-size: 18px;
+  font-size: 20px;
   min-width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .nav-text {

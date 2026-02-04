@@ -6,6 +6,7 @@
  * for editing and deleting sections. Used in the Blueprint Viewer sidebar.
  */
 
+import { MdEdit, MdDelete } from "react-icons/md";
 import "../styles/SectionCard.css";
 
 function SectionCard({ section }) {
@@ -33,8 +34,12 @@ function SectionCard({ section }) {
       </div>
 
       <div className="section-actions">
-        <button className="btn-icon">✏️</button>
-        <button className="btn-icon">🗑️</button>
+        <button className="btn-icon">
+          <MdEdit />
+        </button>
+        <button className="btn-icon">
+          <MdDelete />
+        </button>
       </div>
     </div>
   );

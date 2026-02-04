@@ -9,6 +9,17 @@
 
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  MdDashboard,
+  MdFolder,
+  MdArchitecture,
+  MdPeople,
+  MdBarChart,
+  MdSettings,
+  MdCheckCircle,
+  MdPerson,
+  MdLogout,
+} from "react-icons/md";
 import "../styles/Sidebar.css";
 
 function Sidebar({ role }) {
@@ -24,19 +35,19 @@ function Sidebar({ role }) {
   };
 
   const managerLinks = [
-    { name: "Dashboard", icon: "📊", path: "/dashboard" },
-    { name: "Projects", icon: "📁", path: "/projects" },
-    { name: "Blueprints", icon: "📐", path: "/blueprint" },
-    { name: "Workers", icon: "👥", path: "/workers" },
-    { name: "Reports", icon: "📈", path: "/reports" },
-    { name: "Settings", icon: "⚙️", path: "/settings" },
+    { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
+    { name: "Projects", icon: MdFolder, path: "/projects" },
+    { name: "Blueprints", icon: MdArchitecture, path: "/blueprint" },
+    { name: "Workers", icon: MdPeople, path: "/workers" },
+    { name: "Reports", icon: MdBarChart, path: "/reports" },
+    { name: "Settings", icon: MdSettings, path: "/settings" },
   ];
 
   const workerLinks = [
-    { name: "Dashboard", icon: "📊", path: "/worker/dashboard" },
-    { name: "My Tasks", icon: "✓", path: "/tasks" },
-    { name: "Blueprints", icon: "📐", path: "/blueprint" },
-    { name: "Profile", icon: "👤", path: "/profile" },
+    { name: "Dashboard", icon: MdDashboard, path: "/worker/dashboard" },
+    { name: "My Tasks", icon: MdCheckCircle, path: "/tasks" },
+    { name: "Blueprints", icon: MdArchitecture, path: "/blueprint" },
+    { name: "Profile", icon: MdPerson, path: "/profile" },
   ];
 
   const links = role === "manager" ? managerLinks : workerLinks;
@@ -53,21 +64,24 @@ function Sidebar({ role }) {
       </div>
 
       <nav className="sidebar-nav">
-        {links.map((link, index) => (
-          <a
-            key={index}
-            href={link.path}
-            className={`nav-link ${location.pathname === link.path ? "active" : ""}`}
-          >
-            <span className="nav-icon">{link.icon}</span>
-            <span className="nav-text">{link.name}</span>
-          </a>
-        ))}
+        {links.map((link, index) => {
+          const IconComponent = link.icon;
+          return (
+            <a
+              key={index}
+              href={link.path}
+              className={`nav-link ${location.pathname === link.path ? "active" : ""}`}
+            >
+              <IconComponent className="nav-icon" />
+              <span className="nav-text">{link.name}</span>
+            </a>
+          );
+        })}
       </nav>
 
       <div className="sidebar-footer">
         <button onClick={handleLogout} className="nav-link logout-link">
-          <span className="nav-icon">🚪</span>
+          <MdLogout className="nav-icon" />
           <span className="nav-text">Logout</span>
         </button>
       </div>

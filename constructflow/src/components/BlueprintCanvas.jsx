@@ -6,6 +6,7 @@
  * section drawing tools, and interactive highlighting of defined sections.
  */
 
+import { MdArchitecture } from "react-icons/md";
 import "../styles/BlueprintCanvas.css";
 
 function BlueprintCanvas() {
@@ -13,7 +14,7 @@ function BlueprintCanvas() {
     <div className="blueprint-canvas">
       <div className="blueprint-placeholder">
         <div className="placeholder-content">
-          <span className="placeholder-icon">📐</span>
+          <MdArchitecture className="placeholder-icon" />
           <p>No blueprint uploaded</p>
           <p className="placeholder-hint">Upload a blueprint to get started</p>
           <button className="btn-primary">Upload Blueprint</button>

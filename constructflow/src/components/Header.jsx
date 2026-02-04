@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { MdNotifications, MdPerson } from "react-icons/md";
 import AuthModal from "./AuthModal";
 import NotificationsModal from "./NotificationsModal";
 import "../styles/Header.css";
@@ -48,7 +49,7 @@ function Header({ title, role }) {
             className="icon-btn"
             onClick={() => setShowNotifications(true)}
           >
-            <span className="icon">🔔</span>
+            <MdNotifications className="icon" />
             {notifications.length > 0 && (
               <span className="badge">{notifications.length}</span>
             )}
@@ -72,7 +73,7 @@ function Header({ title, role }) {
               onClick={handleUserClick}
               title="Sign In"
             >
-              <span className="icon">👤</span>
+              <MdPerson className="icon" />
             </button>
           )}
         </div>

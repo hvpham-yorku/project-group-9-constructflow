@@ -11,6 +11,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import BlueprintCanvas from "../components/BlueprintCanvas";
 import SectionCard from "../components/SectionCard";
+import { MdUpload, MdEdit, MdSave, MdUndo } from "react-icons/md";
 import "../styles/BlueprintViewer.css";
 
 function BlueprintViewer() {
@@ -45,16 +46,16 @@ function BlueprintViewer() {
         <div className="blueprint-viewer">
           <div className="blueprint-toolbar">
             <button className="btn-secondary">
-              <span className="icon">📤</span> Upload New
+              <MdUpload className="icon" /> Upload New
             </button>
             <button className="btn-secondary">
-              <span className="icon">✏️</span> Draw Section
+              <MdEdit className="icon" /> Draw Section
             </button>
             <button className="btn-secondary">
-              <span className="icon">💾</span> Save
+              <MdSave className="icon" /> Save
             </button>
             <button className="btn-secondary">
-              <span className="icon">↩️</span> Undo
+              <MdUndo className="icon" /> Undo
             </button>
           </div>
 
