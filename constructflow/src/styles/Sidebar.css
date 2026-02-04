@@ -85,3 +85,11 @@
   background: rgba(255, 255, 255, 0.05);
   color: #feb2b2;
 }
+
+.logout-link {
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+}

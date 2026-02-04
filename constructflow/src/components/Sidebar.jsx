@@ -8,10 +8,20 @@
  */
 
 import { useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import "../styles/Sidebar.css";
 
 function Sidebar({ role }) {
   const location = useLocation();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Failed to log out:", error);
+    }
+  };
 
   const managerLinks = [
     { name: "Dashboard", icon: "📊", path: "/dashboard" },
@@ -56,10 +66,10 @@ function Sidebar({ role }) {
       </nav>
 
       <div className="sidebar-footer">
-        <a href="/logout" className="nav-link">
+        <button onClick={handleLogout} className="nav-link logout-link">
           <span className="nav-icon">🚪</span>
           <span className="nav-text">Logout</span>
-        </a>
+        </button>
       </div>
     </aside>
   );
