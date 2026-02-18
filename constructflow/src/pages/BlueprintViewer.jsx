@@ -1,12 +1,15 @@
 /**
  * BlueprintViewer.jsx
  *
- * Interactive blueprint planning page. Admins upload a blueprint image, draw SVG paths
- * (pipes / electrical connections) over it, assign each element to a worker, and save
- * everything to Firestore. Workers can view and mark elements complete.
+ * Role-aware blueprint page:
+ *   Admin  — full edit: upload, draw, assign, delete, mark complete, save/update
+ *   Worker — read-only: select blueprint, see elements, mark OWN elements complete
+ *
+ * Unsaved-changes guard fires on browser close AND React Router navigation (admin only).
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import BlueprintCanvas from "../components/BlueprintCanvas";
@@ -24,101 +27,138 @@ const makeId = () => `obj-${Date.now()}-${_nextId++}`;
 
 function BlueprintViewer() {
   const { userProfile } = useAuth();
-  const isAdmin = userProfile?.role === "admin";
+  const navigate = useNavigate();
+
+  const isAdmin  = userProfile?.role === "admin";
+  const isWorker = !isAdmin; // plumber or electrician
+  const currentUid = userProfile?.uid || null;
 
   // ── Blueprint state ──────────────────────────────────────────────────────
-  const [blueprintName, setBlueprintName] = useState("");
-  const [blueprintImage, setBlueprintImage] = useState(null);
+  const [blueprintName, setBlueprintName]       = useState("");
+  const [blueprintImage, setBlueprintImage]     = useState(null);
   const [currentBlueprintId, setCurrentBlueprintId] = useState(null);
-  const [objects, setObjects] = useState([]);
+  const [objects, setObjects]                   = useState([]);
+  const [isDirty, setIsDirty]                   = useState(false); // unsaved changes
 
-  // ── Drawing state ────────────────────────────────────────────────────────
-  const [activeObjectId, setActiveObjectId] = useState(null);
+  // ── Drawing state (admin only) ───────────────────────────────────────────
+  const [activeObjectId, setActiveObjectId]     = useState(null);
   const [selectedObjectId, setSelectedObjectId] = useState(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [saving, setSaving]     = useState(false);
 
   // ── Data ─────────────────────────────────────────────────────────────────
-  const [workers, setWorkers] = useState({ plumbers: [], electricians: [] });
-  const [savedBlueprints, setSavedBlueprints] = useState([]);
-  const [showBlueprintDropdown, setShowBlueprintDropdown] = useState(false);
+  const [workers, setWorkers]                   = useState({ plumbers: [], electricians: [] });
+  const [savedBlueprints, setSavedBlueprints]   = useState([]);
+  const [showDropdown, setShowDropdown]         = useState(false);
 
-  // ── Fetch workers (all plumbers + electricians) ──────────────────────────
+  // ── Mark dirty whenever objects change (admin only) ──────────────────────
+  // We use a ref trick: skip the very first render
+  const [objectsInitialized, setObjectsInitialized] = useState(false);
   useEffect(() => {
-    const fetchWorkers = async () => {
+    if (!isAdmin) return;
+    if (!objectsInitialized) { setObjectsInitialized(true); return; }
+    setIsDirty(true);
+  }, [objects]);
+
+  // ── Unsaved-changes guard: browser close / refresh ───────────────────────
+  useEffect(() => {
+    if (!isAdmin) return;
+    const handler = (e) => {
+      if (!isDirty) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty, isAdmin]);
+
+  // ── Unsaved-changes guard: React Router navigation ───────────────────────
+  // We intercept Link clicks by listening to popstate + click on nav links
+  useEffect(() => {
+    if (!isAdmin || !isDirty) return;
+    const handleClick = (e) => {
+      const anchor = e.target.closest("a[href]");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href === "/blueprint") return;
+      e.preventDefault();
+      if (window.confirm("You have unsaved changes. Leave without saving?")) {
+        setIsDirty(false);
+        navigate(href);
+      }
+    };
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, [isDirty, isAdmin, navigate]);
+
+  // ── Fetch workers ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetch = async () => {
       try {
         const snap = await getDocs(
           query(collection(db, "users"), where("role", "in", ["plumber", "electrician"]))
         );
-        const plumbers = [];
-        const electricians = [];
+        const plumbers = [], electricians = [];
         snap.forEach((d) => {
           const data = d.data();
           if (data.role === "plumber") plumbers.push(data);
           else electricians.push(data);
         });
         setWorkers({ plumbers, electricians });
-      } catch (err) {
-        console.error("Failed to fetch workers:", err);
-      }
+      } catch (err) { console.error("Fetch workers:", err); }
     };
-    fetchWorkers();
-  }, []);
+    fetch();
+  }, [isAdmin]);
 
-  // ── Fetch saved blueprints list ──────────────────────────────────────────
-  const fetchBlueprints = async () => {
+  // ── Fetch blueprints list ────────────────────────────────────────────────
+  const fetchBlueprints = useCallback(async () => {
     try {
       const snap = await getDocs(collection(db, "blueprints"));
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
       setSavedBlueprints(list);
-    } catch (err) {
-      console.error("Failed to fetch blueprints:", err);
-    }
-  };
+    } catch (err) { console.error("Fetch blueprints:", err); }
+  }, []);
 
-  useEffect(() => { fetchBlueprints(); }, []);
+  useEffect(() => { fetchBlueprints(); }, [fetchBlueprints]);
 
-  // ── Load a saved blueprint ───────────────────────────────────────────────
+  // ── Load blueprint ───────────────────────────────────────────────────────
   const loadBlueprint = (bp) => {
-    setShowBlueprintDropdown(false);
+    if (isAdmin && isDirty) {
+      if (!window.confirm("You have unsaved changes. Load a different blueprint?")) return;
+    }
+    setShowDropdown(false);
     setActiveObjectId(null);
     setSelectedObjectId(null);
     setBlueprintName(bp.name || "");
     setBlueprintImage(bp.imageUrl || null);
     setCurrentBlueprintId(bp.id);
-
-    // Convert stored objects map → array
     const objs = Object.entries(bp.objects || {}).map(([id, obj]) => ({
-      id,
-      ...obj,
-      drawing: false,
+      id, ...obj, drawing: false,
     }));
     setObjects(objs);
+    setObjectsInitialized(false); // reset dirty tracking
+    setIsDirty(false);
   };
 
-  // ── Delete a saved blueprint ─────────────────────────────────────────────
+  // ── Delete blueprint (admin only) ────────────────────────────────────────
   const deleteBlueprint = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm("Delete this blueprint?")) return;
+    if (!window.confirm("Delete this blueprint permanently?")) return;
     try {
       await deleteDoc(doc(db, "blueprints", id));
       setSavedBlueprints((prev) => prev.filter((b) => b.id !== id));
       if (currentBlueprintId === id) {
-        setCurrentBlueprintId(null);
-        setBlueprintName("");
-        setBlueprintImage(null);
-        setObjects([]);
+        setCurrentBlueprintId(null); setBlueprintName(""); setBlueprintImage(null); setObjects([]);
+        setIsDirty(false);
       }
-    } catch (err) {
-      console.error("Delete error:", err);
-      alert("Failed to delete blueprint.");
-    }
+    } catch (err) { alert("Failed to delete blueprint."); }
   };
 
-  // ── Image upload ─────────────────────────────────────────────────────────
+  // ── Image upload (admin only) ────────────────────────────────────────────
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -128,24 +168,19 @@ function BlueprintViewer() {
       await uploadBytes(storageRef, file);
       const url = await getDownloadURL(storageRef);
       setBlueprintImage(url);
-      setCurrentBlueprintId(null); // new blueprint
+      setCurrentBlueprintId(null);
       setObjects([]);
+      setIsDirty(false);
+      setObjectsInitialized(false);
       if (!blueprintName) setBlueprintName(file.name.replace(/\.[^.]+$/, ""));
-    } catch (err) {
-      console.error("Upload error:", err);
-      alert("Failed to upload image.");
-    }
+    } catch (err) { alert("Failed to upload image."); }
     setLoading(false);
   };
 
-  // ── Start drawing a new element ──────────────────────────────────────────
+  // ── Drawing (admin only) ─────────────────────────────────────────────────
   const startDrawing = (type) => {
-    if (!blueprintImage) {
-      alert("Please upload a blueprint image first.");
-      return;
-    }
+    if (!blueprintImage) { alert("Upload a blueprint image first."); return; }
     if (activeObjectId) cancelActiveDrawing();
-
     const id = makeId();
     setObjects((prev) => [
       ...prev,
@@ -165,19 +200,16 @@ function BlueprintViewer() {
     setActiveObjectId(null);
   };
 
-  // ── Canvas callbacks ─────────────────────────────────────────────────────
-  const handlePathUpdate = (id, points) => {
+  const handlePathUpdate   = (id, points) =>
     setObjects((prev) => prev.map((o) => o.id === id ? { ...o, pathPoints: points } : o));
-  };
 
   const handleFinishDrawing = (id) => {
     setObjects((prev) => prev.map((o) => o.id === id ? { ...o, drawing: false } : o));
     setActiveObjectId(null);
   };
 
-  // ── Delete element ───────────────────────────────────────────────────────
   const deleteObject = (id) => {
-    if (id === activeObjectId) setActiveObjectId(null);
+    if (id === activeObjectId)  setActiveObjectId(null);
     if (id === selectedObjectId) setSelectedObjectId(null);
     setObjects((prev) => prev.filter((o) => o.id !== id));
   };
@@ -196,11 +228,39 @@ function BlueprintViewer() {
     );
   };
 
-  // ── Save / update blueprint ──────────────────────────────────────────────
+  // ── Mark complete ────────────────────────────────────────────────────────
+  // Admin: any element. Worker: only elements assigned to them.
+  const toggleComplete = (id) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    if (isWorker && obj.assignedTo !== currentUid) return; // workers can only touch their own
+    setObjects((prev) =>
+      prev.map((o) => o.id === id ? { ...o, completed: !o.completed } : o)
+    );
+    // For workers, persist immediately to Firestore
+    if (isWorker && currentBlueprintId) {
+      persistCompletion(id, !obj.completed);
+    }
+  };
+
+  const persistCompletion = async (objId, completed) => {
+    try {
+      const bp = savedBlueprints.find((b) => b.id === currentBlueprintId);
+      if (!bp) return;
+      const updatedObjects = { ...bp.objects };
+      if (updatedObjects[objId]) updatedObjects[objId] = { ...updatedObjects[objId], completed };
+      await updateDoc(doc(db, "blueprints", currentBlueprintId), { objects: updatedObjects });
+      // Refresh local list
+      setSavedBlueprints((prev) =>
+        prev.map((b) => b.id === currentBlueprintId ? { ...b, objects: updatedObjects } : b)
+      );
+    } catch (err) { console.error("Failed to persist completion:", err); }
+  };
+
+  // ── Save / update (admin only) ───────────────────────────────────────────
   const saveBlueprint = async () => {
     if (!blueprintImage || !blueprintName.trim()) {
-      alert("Please upload an image and provide a name.");
-      return;
+      alert("Please upload an image and provide a name."); return;
     }
     setSaving(true);
     try {
@@ -214,94 +274,101 @@ function BlueprintViewer() {
           completed: obj.completed,
         };
       });
-
-      const data = {
-        name: blueprintName.trim(),
-        imageUrl: blueprintImage,
-        objects: objectsMap,
-        updatedAt: new Date(),
-      };
-
+      const data = { name: blueprintName.trim(), imageUrl: blueprintImage, objects: objectsMap, updatedAt: new Date() };
       if (currentBlueprintId) {
         await updateDoc(doc(db, "blueprints", currentBlueprintId), data);
       } else {
-        const ref = await addDoc(collection(db, "blueprints"), { ...data, createdAt: new Date() });
-        setCurrentBlueprintId(ref.id);
+        const docRef = await addDoc(collection(db, "blueprints"), { ...data, createdAt: new Date() });
+        setCurrentBlueprintId(docRef.id);
       }
-
       await fetchBlueprints();
+      setIsDirty(false);
       alert("Blueprint saved!");
-    } catch (err) {
-      console.error("Save error:", err);
-      alert("Failed to save blueprint.");
-    }
+    } catch (err) { alert("Failed to save blueprint."); }
     setSaving(false);
   };
 
-  const selectedObject = objects.find((o) => o.id === selectedObjectId) || null;
-  const isDrawingPipe = activeObjectId && objects.find((o) => o.id === activeObjectId)?.type === "pipe";
+  // ── Derived ──────────────────────────────────────────────────────────────
+  const selectedObject      = objects.find((o) => o.id === selectedObjectId) || null;
+  const isDrawingPipe       = activeObjectId && objects.find((o) => o.id === activeObjectId)?.type === "pipe";
   const isDrawingConnection = activeObjectId && objects.find((o) => o.id === activeObjectId)?.type === "connection";
+
+  // For canvas: pass currentUid so it can color worker's own elements yellow
+  const canvasObjects = objects.map((obj) => ({
+    ...obj,
+    isOwn: isWorker && obj.assignedTo === currentUid,
+  }));
 
   return (
     <div className="dashboard">
-      <Sidebar role="manager" />
+      <Sidebar />
       <div className="dashboard-content">
-        <Header title="Blueprint Planner" role="manager" />
+        <Header title="Blueprint Planner" role={isAdmin ? "manager" : "worker"} />
 
         <div className="blueprint-viewer">
           {/* ── Toolbar ── */}
           <div className="blueprint-toolbar">
+
+            {/* Blueprint name — editable for admin, readonly for worker */}
             <input
               type="text"
               placeholder="Blueprint Name"
               value={blueprintName}
-              onChange={(e) => setBlueprintName(e.target.value)}
-              className="blueprint-name-input"
+              onChange={(e) => isAdmin && setBlueprintName(e.target.value)}
+              className={`blueprint-name-input${isWorker ? " readonly" : ""}`}
+              readOnly={isWorker}
             />
 
-            <label className={`btn-secondary${loading ? " disabled" : ""}`}>
-              <MdUpload className="icon" /> Upload Image
-              <input type="file" accept="image/*" onChange={handleImageUpload}
-                style={{ display: "none" }} disabled={loading} />
-            </label>
+            {/* Admin-only controls */}
+            {isAdmin && (
+              <>
+                <label className={`btn-secondary${loading ? " disabled" : ""}`}>
+                  <MdUpload className="icon" /> Upload Image
+                  <input type="file" accept="image/*" onChange={handleImageUpload}
+                    style={{ display: "none" }} disabled={loading} />
+                </label>
 
-            <button
-              className={`btn-secondary draw-btn pipe-btn${isDrawingPipe ? " active" : ""}`}
-              onClick={() => isDrawingPipe ? cancelActiveDrawing() : startDrawing("pipe")}
-              disabled={!blueprintImage}
-              title="Click to start drawing a pipe. Double-click to finish."
-            >
-              <span className="draw-icon pipe-icon" /> {isDrawingPipe ? "Cancel Pipe" : "Draw Pipe"}
-            </button>
+                <button
+                  className={`btn-secondary draw-btn pipe-btn${isDrawingPipe ? " active" : ""}`}
+                  onClick={() => isDrawingPipe ? cancelActiveDrawing() : startDrawing("pipe")}
+                  disabled={!blueprintImage}
+                >
+                  <span className="draw-icon pipe-icon" />
+                  {isDrawingPipe ? "Cancel Pipe" : "Draw Pipe"}
+                </button>
 
-            <button
-              className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
-              onClick={() => isDrawingConnection ? cancelActiveDrawing() : startDrawing("connection")}
-              disabled={!blueprintImage}
-              title="Click to start drawing a connection. Double-click to finish."
-            >
-              <span className="draw-icon connection-icon" /> {isDrawingConnection ? "Cancel Connection" : "Draw Connection"}
-            </button>
+                <button
+                  className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
+                  onClick={() => isDrawingConnection ? cancelActiveDrawing() : startDrawing("connection")}
+                  disabled={!blueprintImage}
+                >
+                  <span className="draw-icon connection-icon" />
+                  {isDrawingConnection ? "Cancel Connection" : "Draw Connection"}
+                </button>
 
-            <button
-              className="btn-secondary save-btn"
-              onClick={saveBlueprint}
-              disabled={saving || !blueprintImage}
-            >
-              <MdSave className="icon" /> {saving ? "Saving…" : currentBlueprintId ? "Update" : "Save"}
-            </button>
+                <button
+                  className={`btn-secondary save-btn${isDirty ? " dirty" : ""}`}
+                  onClick={saveBlueprint}
+                  disabled={saving || !blueprintImage}
+                >
+                  <MdSave className="icon" />
+                  {saving ? "Saving…" : currentBlueprintId ? "Update" : "Save"}
+                  {isDirty && <span className="dirty-dot" title="Unsaved changes" />}
+                </button>
+              </>
+            )}
 
-            {/* ── Blueprint selector dropdown ── */}
+            {/* Blueprint selector — both roles */}
             <div className="blueprint-selector">
               <button
                 className="btn-secondary selector-btn"
-                onClick={() => setShowBlueprintDropdown((v) => !v)}
+                onClick={() => setShowDropdown((v) => !v)}
               >
                 <MdExpandMore className="icon" />
-                {savedBlueprints.length > 0 ? "Blueprints" : "No saved blueprints"}
+                {savedBlueprints.length > 0 ? "Blueprints" : "No blueprints"}
               </button>
 
-              {showBlueprintDropdown && (
+              {showDropdown && (
                 <div className="blueprint-dropdown">
                   <div className="dropdown-header">Saved Blueprints</div>
                   {savedBlueprints.length === 0 && (
@@ -318,11 +385,8 @@ function BlueprintViewer() {
                         {Object.keys(bp.objects || {}).length} elements
                       </span>
                       {isAdmin && (
-                        <button
-                          className="dropdown-delete"
-                          onClick={(e) => deleteBlueprint(bp.id, e)}
-                          title="Delete blueprint"
-                        >✕</button>
+                        <button className="dropdown-delete"
+                          onClick={(e) => deleteBlueprint(bp.id, e)} title="Delete">✕</button>
                       )}
                     </div>
                   ))}
@@ -335,84 +399,115 @@ function BlueprintViewer() {
                 ✏️ Click to add points · Double-click to finish · Ctrl+Z undo · Ctrl+Shift+Z redo
               </div>
             )}
+
+            {isWorker && blueprintImage && (
+              <div className="worker-hint">
+                🟡 Yellow = assigned to you &nbsp;·&nbsp; Click an element to mark complete
+              </div>
+            )}
           </div>
 
           {/* ── Main area ── */}
           <div className="blueprint-main">
-            {/* Canvas */}
             <div className="blueprint-canvas-container">
               <BlueprintCanvas
                 imageUrl={blueprintImage}
-                objects={objects}
-                activeObjectId={activeObjectId}
+                objects={canvasObjects}
+                activeObjectId={isAdmin ? activeObjectId : null}
                 selectedObjectId={selectedObjectId}
-                onPathUpdate={handlePathUpdate}
-                onFinishDrawing={handleFinishDrawing}
+                onPathUpdate={isAdmin ? handlePathUpdate : undefined}
+                onFinishDrawing={isAdmin ? handleFinishDrawing : undefined}
                 onObjectSelected={(obj) => {
                   if (!activeObjectId) setSelectedObjectId(obj.id);
                 }}
+                currentUid={currentUid}
+                isWorker={isWorker}
               />
             </div>
 
             {/* Right sidebar */}
             <div className="blueprint-sidebar">
-              <h3>Elements <span className="element-count">({objects.length})</span></h3>
+              <h3>
+                Elements <span className="element-count">({objects.length})</span>
+              </h3>
 
               <div className="sections-list">
                 {objects.length === 0 && (
                   <p className="no-sections">
-                    No elements yet.<br />
-                    Upload an image then click "Draw Pipe" or "Draw Connection".
+                    {isAdmin
+                      ? <>No elements yet.<br />Upload an image then draw pipes or connections.</>
+                      : "Select a blueprint from the dropdown to view elements."}
                   </p>
                 )}
 
-                {objects.map((obj) => (
-                  <div
-                    key={obj.id}
-                    className={`section-card ${obj.type}${selectedObjectId === obj.id ? " active" : ""}${obj.drawing ? " drawing-active" : ""}`}
-                    onClick={() => { if (!activeObjectId) setSelectedObjectId(obj.id); }}
-                  >
-                    <div className="section-header">
-                      <div className="section-title">
-                        <span className={`type-dot ${obj.type}${obj.completed ? " completed" : ""}`} />
-                        <span className="section-type-label">
-                          {obj.type === "pipe" ? "Pipe" : "Connection"}
-                          {obj.drawing && <span className="drawing-badge"> ✏️</span>}
-                        </span>
+                {objects.map((obj) => {
+                  const isOwn = isWorker && obj.assignedTo === currentUid;
+                  const canComplete = isAdmin || isOwn;
+                  return (
+                    <div
+                      key={obj.id}
+                      className={`section-card ${obj.type}${selectedObjectId === obj.id ? " active" : ""}${obj.drawing ? " drawing-active" : ""}${isOwn ? " own-element" : ""}`}
+                      onClick={() => { if (!activeObjectId) setSelectedObjectId(obj.id); }}
+                    >
+                      <div className="section-header">
+                        <div className="section-title">
+                          <span className={`type-dot ${obj.type}${obj.completed ? " completed" : ""}${isOwn ? " own" : ""}`} />
+                          <span className="section-type-label">
+                            {obj.type === "pipe" ? "Pipe" : "Connection"}
+                            {obj.drawing && <span className="drawing-badge"> ✏️</span>}
+                          </span>
+                        </div>
+                        <div className="section-actions-inline">
+                          {/* Complete toggle */}
+                          {canComplete && !obj.drawing && (
+                            <button
+                              className={`btn-complete${obj.completed ? " done" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); toggleComplete(obj.id); }}
+                              title={obj.completed ? "Mark as pending" : "Mark as complete"}
+                            >
+                              {obj.completed ? "✓ Done" : "Mark Done"}
+                            </button>
+                          )}
+                          {/* Status badge for non-completable */}
+                          {!canComplete && (
+                            <span className={`section-status${obj.completed ? " completed" : ""}`}>
+                              {obj.completed ? "Done" : "Pending"}
+                            </span>
+                          )}
+                          {/* Delete — admin only */}
+                          {isAdmin && (
+                            <button
+                              className="btn-icon-sm delete-btn"
+                              onClick={(e) => { e.stopPropagation(); deleteObject(obj.id); }}
+                              title="Delete"
+                            >✕</button>
+                          )}
+                        </div>
                       </div>
-                      <div className="section-actions-inline">
-                        <span className={`section-status${obj.completed ? " completed" : ""}`}>
-                          {obj.completed ? "Done" : "Pending"}
-                        </span>
-                        <button
-                          className="btn-icon-sm delete-btn"
-                          onClick={(e) => { e.stopPropagation(); deleteObject(obj.id); }}
-                          title="Delete"
-                        >✕</button>
+                      <div className="section-meta">
+                        {obj.assignedTo
+                          ? <span className={`assigned-worker${isOwn ? " own" : ""}`}>
+                              {isOwn ? "👷 You" : `👷 ${obj.assignedToName}`}
+                            </span>
+                          : <span className="unassigned">Unassigned</span>
+                        }
+                        {obj.pathPoints?.length > 0 && (
+                          <span className="point-count">{obj.pathPoints.length} pts</span>
+                        )}
                       </div>
                     </div>
-                    <div className="section-meta">
-                      {obj.assignedTo
-                        ? <span className="assigned-worker">👷 {obj.assignedToName}</span>
-                        : <span className="unassigned">Unassigned</span>
-                      }
-                      {obj.pathPoints.length > 0 && (
-                        <span className="point-count">{obj.pathPoints.length} pts</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              {/* Assignment panel — admin only, finished elements only */}
-              {selectedObject && !selectedObject.drawing && isAdmin && (
+              {/* Assignment panel — admin only */}
+              {isAdmin && selectedObject && !selectedObject.drawing && (
                 <div className="assignment-panel">
                   <h4>
                     Assign {selectedObject.type === "pipe" ? "Pipe" : "Connection"}
-                    {selectedObject.type === "pipe"
-                      ? <span className="worker-type-hint"> (Plumbers)</span>
-                      : <span className="worker-type-hint"> (Electricians)</span>
-                    }
+                    <span className="worker-type-hint">
+                      {selectedObject.type === "pipe" ? " (Plumbers)" : " (Electricians)"}
+                    </span>
                   </h4>
                   <select
                     value={selectedObject.assignedTo || ""}
@@ -429,17 +524,18 @@ function BlueprintViewer() {
                       ))}
                   </select>
                   {selectedObject.type === "pipe" && workers.plumbers.length === 0 && (
-                    <p className="no-workers-hint">No plumbers found in the system.</p>
+                    <p className="no-workers-hint">No plumbers in the system.</p>
                   )}
                   {selectedObject.type === "connection" && workers.electricians.length === 0 && (
-                    <p className="no-workers-hint">No electricians found in the system.</p>
+                    <p className="no-workers-hint">No electricians in the system.</p>
                   )}
                 </div>
               )}
 
-              {selectedObject && !selectedObject.drawing && !isAdmin && (
+              {/* Worker: show "not assigned to you" message */}
+              {isWorker && selectedObject && !selectedObject.drawing && selectedObject.assignedTo !== currentUid && (
                 <div className="assignment-panel readonly">
-                  <p className="readonly-hint">Only admins can assign workers.</p>
+                  <p className="readonly-hint">This element is not assigned to you.</p>
                 </div>
               )}
             </div>

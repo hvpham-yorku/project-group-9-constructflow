@@ -37,7 +37,7 @@ function ManagerDashboard() {
 
   return (
     <div className="dashboard">
-      <Sidebar role="manager" />
+      <Sidebar />
       <div className="dashboard-content">
         <Header title="Manager Dashboard" role="manager" />
 

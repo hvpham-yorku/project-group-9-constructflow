@@ -96,3 +96,34 @@
   cursor: pointer;
   font-family: inherit;
 }
+
+.sidebar-user {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 16px 6px;
+}
+
+.sidebar-user-name {
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-user-role {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 10px;
+  width: fit-content;
+}
+
+.role-admin       { background: #ff6b35; color: white; }
+.role-plumber     { background: #dc2626; color: white; }
+.role-electrician { background: #2563eb; color: white; }
+

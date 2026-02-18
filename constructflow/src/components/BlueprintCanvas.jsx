@@ -22,6 +22,7 @@ function BlueprintCanvas({
   onFinishDrawing,
   onObjectSelected,
   selectedObjectId,
+  isWorker = false,
 }) {
   // ── Drawing state ─────────────────────────────────────────────────────────
   const [currentPoints, setCurrentPoints] = useState([]);
@@ -269,22 +270,22 @@ function BlueprintCanvas({
           {/* Finished / in-progress objects */}
           {objects.map((obj) => {
             const isSelected = obj.id === selectedObjectId;
-            const isBeingDragged = dragging && dragRef.current.objId === obj.id;
+            const isOwn = obj.isOwn; // worker's own element → yellow
             return (
               <path
                 key={obj.id}
                 d={pointsToPath(obj.pathPoints)}
-                className={`blueprint-object ${obj.type}${obj.completed ? " completed" : ""}${isSelected ? " selected" : ""}`}
+                className={`blueprint-object ${obj.type}${obj.completed ? " completed" : ""}${isSelected ? " selected" : ""}${isOwn ? " own-element" : ""}`}
                 strokeWidth={isSelected ? 7 : 5}
                 fill="none"
                 style={{
                   cursor: activeObjectId
                     ? "crosshair"
-                    : isSelected
+                    : isSelected && !isWorker
                     ? (dragging ? "grabbing" : "grab")
                     : "pointer",
                 }}
-                onMouseDown={(e) => handlePathMouseDown(e, obj)}
+                onMouseDown={(e) => !isWorker && handlePathMouseDown(e, obj)}
                 onClick={(e) => {
                   if (activeObjectId || dragging) return;
                   e.stopPropagation();

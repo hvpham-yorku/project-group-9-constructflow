@@ -104,6 +104,14 @@
   stroke: #4ade80;
 }
 
+/* Worker's own assigned element — yellow */
+.blueprint-object.own-element {
+  stroke: #eab308;
+}
+.blueprint-object.own-element.completed {
+  stroke: #166534;
+}
+
 /* In-progress preview */
 .blueprint-object.preview {
   stroke-dasharray: 10 5;

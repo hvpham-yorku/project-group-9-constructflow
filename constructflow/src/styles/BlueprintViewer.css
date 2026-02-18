@@ -55,6 +55,29 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* Save button with unsaved indicator */
+.save-btn.dirty {
+  border-color: #f59e0b !important;
+  color: #f59e0b !important;
+}
+.dirty-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* Readonly name input for workers */
+.blueprint-name-input.readonly {
+  background: #f9fafb;
+  color: #6b7280;
+  cursor: default;
+  border-color: #e5e7eb;
+}
 .blueprint-toolbar .btn-secondary.active {
   background: #1e293b;
   color: white;
@@ -80,6 +103,17 @@
 }
 .pipe-icon       { background: #dc2626; }
 .connection-icon { background: #2563eb; }
+
+/* Worker hint bar */
+.worker-hint {
+  font-size: 12px;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 5px 11px;
+  margin-left: auto;
+}
 
 /* Drawing hint */
 .drawing-hint {
@@ -254,6 +288,7 @@
 }
 .section-card.pipe        { border-left-color: #dc2626; }
 .section-card.connection  { border-left-color: #2563eb; }
+.section-card.own-element { border-left-color: #eab308; background: #fefce8; }
 
 .section-card:hover { border-color: #9ca3af; background: white; }
 .section-card.active {
@@ -291,6 +326,7 @@
 .type-dot.connection               { background: #2563eb; }
 .type-dot.pipe.completed           { background: #166534; }
 .type-dot.connection.completed     { background: #4ade80; }
+.type-dot.own                      { background: #eab308; }
 
 .section-type-label {
   font-size: 13px;
@@ -314,6 +350,35 @@
   font-weight: 500;
 }
 .section-status.completed { background: #dcfce7; color: #166534; }
+
+/* Mark Done button */
+.btn-complete {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 1.5px solid #d1d5db;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-complete:hover {
+  border-color: #166534;
+  color: #166534;
+  background: #f0fdf4;
+}
+.btn-complete.done {
+  background: #dcfce7;
+  border-color: #166534;
+  color: #166534;
+}
+
+.assigned-worker.own {
+  color: #92400e;
+  font-weight: 600;
+}
 
 .btn-icon-sm {
   background: none;
