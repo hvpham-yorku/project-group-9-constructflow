@@ -35,7 +35,11 @@
 }
 
 .org-card-icon {
-  font-size: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 52px;
+  color: #ff6b35;
   margin-bottom: 16px;
   line-height: 1;
 }
@@ -238,8 +242,9 @@
 }
 
 .wt-icon {
-  font-size: 32px;
+  font-size: 30px;
   line-height: 1;
+  color: inherit;
 }
 
 .wt-label {

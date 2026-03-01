@@ -1,21 +1,23 @@
 /**
  * LoginPage.jsx
  *
- * provides a simple login form with email and password fields. Users enter their credentials to access
- * their role-specific dashboards. Password recovery link is included for forgotten passwords.
+ * Full-page sign-in / sign-up screen, styled to match the rest of the app.
+ * On success the router redirects to /dashboard where role-based routing
+ * takes over (org setup → manager dashboard / worker dashboard).
  */
 
 import { useState } from "react";
+import { MdConstruction } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "../styles/LoginPage.css";
 
 function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signup, login } = useAuth();
@@ -25,117 +27,139 @@ function LoginPage() {
     e.preventDefault();
     setError("");
 
+    if (isSignUp && name.trim().length < 2) {
+      setError("Please enter your full name.");
+      return;
+    }
     if (isSignUp && password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError("Passwords do not match.");
       return;
     }
 
     setLoading(true);
-
     try {
       if (isSignUp) {
-        await signup(email, password, name);
+        await signup(email, password, name.trim());
       } else {
         await login(email, password);
       }
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message || "Authentication failed");
+      const msg =
+        err.code === "auth/email-already-in-use"
+          ? "An account with this email already exists."
+          : err.code === "auth/user-not-found" ||
+              err.code === "auth/wrong-password"
+            ? "Invalid email or password."
+            : err.message || "Authentication failed.";
+      setError(msg);
     }
-
     setLoading(false);
+  };
+
+  const switchMode = () => {
+    setIsSignUp((v) => !v);
+    setError("");
+    setName("");
+    setPassword("");
+    setConfirmPassword("");
   };
 
   return (
     <div className="login-page">
-      <div className="login-container">
-        <div className="login-header">
+      <div className="login-card">
+        {/* ── Brand ── */}
+        <div className="login-brand">
+          <div className="login-brand-icon">
+            <MdConstruction />
+          </div>
           <h1>ConstructFlow</h1>
           <p>Construction Project Management</p>
         </div>
 
-        <div className="login-form">
-          <h2>{isSignUp ? "Create Account" : "Sign In"}</h2>
+        {/* ── Heading ── */}
+        <h2 className="login-mode-heading">
+          {isSignUp ? "Create Account" : "Welcome Back"}
+        </h2>
 
-          {error && <div className="error-message">{error}</div>}
+        {/* ── Error ── */}
+        {error && <div className="login-error">{error}</div>}
 
-          <form onSubmit={handleSubmit}>
-            {isSignUp && (
-              <>
-                <div className="form-group">
-                  <label htmlFor="name">Name</label>
-                  <input
-                    id="name"
-                    type="text"
-                    placeholder="Enter your name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="form-group">
-              <label htmlFor="email">Email</label>
+        {/* ── Form ── */}
+        <form className="login-form" onSubmit={handleSubmit}>
+          {isSignUp && (
+            <div className="login-field">
+              <label htmlFor="lp-name">Full Name</label>
               <input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="lp-name"
+                type="text"
+                placeholder="John Smith"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 required
+                autoComplete="name"
+                autoFocus
               />
             </div>
+          )}
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-            </div>
-
-            {isSignUp && (
-              <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-            )}
-
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading ? "Please wait..." : isSignUp ? "Sign Up" : "Sign In"}
-            </button>
-          </form>
-
-          <div className="login-footer">
-            <p>
-              {isSignUp
-                ? "Already have an account? "
-                : "Don't have an account? "}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUp(!isSignUp);
-                  setError("");
-                }}
-                className="link-btn"
-              >
-                {isSignUp ? "Sign In" : "Sign Up"}
-              </button>
-            </p>
+          <div className="login-field">
+            <label htmlFor="lp-email">Email</label>
+            <input
+              id="lp-email"
+              type="email"
+              placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              autoFocus={!isSignUp}
+            />
           </div>
+
+          <div className="login-field">
+            <label htmlFor="lp-password">Password</label>
+            <input
+              id="lp-password"
+              type="password"
+              placeholder={isSignUp ? "At least 6 characters" : "Your password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+            />
+          </div>
+
+          {isSignUp && (
+            <div className="login-field">
+              <label htmlFor="lp-confirm">Confirm Password</label>
+              <input
+                id="lp-confirm"
+                type="password"
+                placeholder="Repeat password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+              />
+            </div>
+          )}
+
+          <button type="submit" className="login-submit" disabled={loading}>
+            {loading ? "Please wait…" : isSignUp ? "Create Account" : "Sign In"}
+          </button>
+        </form>
+
+        {/* ── Switch ── */}
+        <div className="login-switch">
+          {isSignUp ? "Already have an account? " : "Don't have an account? "}
+          <button
+            type="button"
+            className="login-switch-btn"
+            onClick={switchMode}
+          >
+            {isSignUp ? "Sign In" : "Sign Up"}
+          </button>
         </div>
       </div>
     </div>
