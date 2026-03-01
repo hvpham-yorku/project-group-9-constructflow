@@ -14,6 +14,7 @@ import {
   MdConstruction,
   MdClose,
   MdArrowForward,
+  MdCheckCircle,
 } from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -24,6 +25,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  updateDoc,
   query,
   where,
   serverTimestamp,
@@ -34,7 +36,6 @@ import "../styles/ProjectsPage.css";
 const STATUS_COLORS = {
   active: { bg: "#dcfce7", fg: "#16a34a" },
   completed: { bg: "#dbeafe", fg: "#1d4ed8" },
-  pending: { bg: "#fef9c3", fg: "#b45309" },
 };
 
 export default function ProjectsPage() {
@@ -103,6 +104,20 @@ export default function ProjectsPage() {
     setCreating(false);
   };
 
+  // ── Mark project complete ────────────────────────────────────────────────
+  const handleMarkComplete = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Mark this project as completed?")) return;
+    try {
+      await updateDoc(doc(db, "projects", id), { status: "completed" });
+      setProjects((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, status: "completed" } : p)),
+      );
+    } catch (err) {
+      alert("Failed to update project status.");
+    }
+  };
+
   // ── Delete project ──────────────────────────────────────────────────────
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -152,7 +167,7 @@ export default function ProjectsPage() {
           </div>
 
           <div className="projects-filters">
-            {["all", "active", "pending", "completed"].map((f) => (
+            {["all", "active", "completed"].map((f) => (
               <button
                 key={f}
                 className={`filter-btn${filter === f ? " active" : ""}`}
@@ -224,6 +239,15 @@ export default function ProjectsPage() {
                         >
                           Open <MdArrowForward />
                         </button>
+                        {isManager && status !== "completed" && (
+                          <button
+                            className="btn-complete-project"
+                            onClick={(e) => handleMarkComplete(project.id, e)}
+                            title="Mark as completed"
+                          >
+                            <MdCheckCircle />
+                          </button>
+                        )}
                         {isManager && (
                           <button
                             className="btn-delete-sm"

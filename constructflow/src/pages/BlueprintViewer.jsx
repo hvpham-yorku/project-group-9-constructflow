@@ -16,7 +16,15 @@ import { useNavigate, useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import BlueprintCanvas from "../components/BlueprintCanvas";
-import { MdSave, MdExpandMore, MdArrowBack } from "react-icons/md";
+import {
+  MdSave,
+  MdExpandMore,
+  MdArrowBack,
+  MdPerson,
+  MdEdit,
+  MdImage,
+  MdUpload,
+} from "react-icons/md";
 import { storage, db } from "../firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
@@ -525,7 +533,13 @@ export default function BlueprintViewer() {
                   <label
                     className={`btn-secondary${loading ? " disabled" : ""}`}
                   >
-                    {loading ? "Uploading…" : "⬆ Upload Image"}
+                    {loading ? (
+                      "Uploading…"
+                    ) : (
+                      <>
+                        <MdUpload className="icon" /> Upload Image
+                      </>
+                    )}
                     <input
                       type="file"
                       accept="image/*"
@@ -537,7 +551,7 @@ export default function BlueprintViewer() {
                 )}
                 {blueprintImage && (
                   <span className="image-set-badge" title="Image uploaded">
-                    🖼 Image set
+                    <MdImage className="icon" /> Image set
                   </span>
                 )}
 
@@ -561,12 +575,10 @@ export default function BlueprintViewer() {
                       : startDrawing("connection")
                   }
                   disabled={!blueprintImage}
-                  title="Draw connection (Electricians)"
+                  title="Draw wiring (Electricians)"
                 >
                   <span className="draw-icon connection-icon" />
-                  {isDrawingConnection
-                    ? "Cancel Connection"
-                    : "Draw Connection"}
+                  {isDrawingConnection ? "Cancel Wiring" : "Draw Wiring"}
                 </button>
 
                 <button
@@ -725,7 +737,14 @@ export default function BlueprintViewer() {
                           <span className="section-type-label">
                             {TYPE_LABELS[obj.type] || obj.type}
                             {obj.drawing && (
-                              <span className="drawing-badge"> ✏️</span>
+                              <span className="drawing-badge">
+                                <MdEdit
+                                  style={{
+                                    verticalAlign: "middle",
+                                    marginLeft: 4,
+                                  }}
+                                />
+                              </span>
                             )}
                           </span>
                         </div>
@@ -770,7 +789,13 @@ export default function BlueprintViewer() {
                           <span
                             className={`assigned-worker${isOwn ? " own" : ""}`}
                           >
-                            {isOwn ? "👷 You" : `👷 ${obj.assignedToName}`}
+                            <MdPerson
+                              style={{
+                                verticalAlign: "middle",
+                                marginRight: 2,
+                              }}
+                            />
+                            {isOwn ? "You" : obj.assignedToName}
                           </span>
                         ) : (
                           <span className="unassigned">Unassigned</span>

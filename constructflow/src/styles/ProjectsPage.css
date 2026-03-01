@@ -180,6 +180,27 @@
   color: #e53e3e;
 }
 
+.btn-complete-project {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #a0aec0;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.btn-complete-project:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #16a34a;
+}
+
 /* ── Empty / Loading ─────────────────────────────────────────────── */
 .projects-empty {
   text-align: center;
