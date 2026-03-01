@@ -1,94 +1,430 @@
 /**
  * SettingsPage.jsx
  *
- * Application settings and preferences page. Users can configure account settings,
- * notification preferences, project defaults, and other system-wide options. Includes
- * toggles for email notifications, task reminders, and auto-archive features. Also
- * provides account management options including account deletion.
+ * Account settings: view profile info, update display name, change password,
+ * and delete account. Delete account re-authenticates with the user's current
+ * password, then removes the Firestore user doc and the Firebase Auth account.
  */
 
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
+} from "firebase/auth";
+import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
+import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import "../styles/Dashboard.css";
+import {
+  MdPerson,
+  MdEmail,
+  MdBadge,
+  MdEdit,
+  MdCheck,
+  MdClose,
+  MdLock,
+  MdDeleteForever,
+  MdWarning,
+} from "react-icons/md";
+import "../styles/SettingsPage.css";
 
-function SettingsPage() {
+const ROLE_LABELS = {
+  manager: "Manager",
+  carpenter: "Carpenter",
+  electrician: "Electrician",
+  plumber: "Plumber",
+  general: "No role assigned",
+};
+
+export default function SettingsPage() {
+  const { currentUser, userProfile, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // ── Display name editing ────────────────────────────────────────────────
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(userProfile?.name || "");
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState("");
+  const [nameSuccess, setNameSuccess] = useState(false);
+
+  const saveName = async () => {
+    if (!nameValue.trim()) return setNameError("Name cannot be empty.");
+    setNameSaving(true);
+    setNameError("");
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), {
+        name: nameValue.trim(),
+      });
+      setEditingName(false);
+      setNameSuccess(true);
+      setTimeout(() => setNameSuccess(false), 3000);
+    } catch {
+      setNameError("Failed to update name.");
+    }
+    setNameSaving(false);
+  };
+
+  // ── Change password ───────────────────────────────────────────────────
+  const [showChangePw, setShowChangePw] = useState(false);
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwError("");
+    if (newPw.length < 6) return setPwError("New password must be at least 6 characters.");
+    if (newPw !== confirmPw) return setPwError("Passwords do not match.");
+    setPwSaving(true);
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, currentPw);
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, newPw);
+      setPwSuccess(true);
+      setCurrentPw(""); setNewPw(""); setConfirmPw("");
+      setShowChangePw(false);
+    } catch (err) {
+      if (
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/invalid-credential"
+      ) {
+        setPwError("Current password is incorrect.");
+      } else {
+        setPwError(err.message || "Failed to change password.");
+      }
+    }
+    setPwSaving(false);
+  };
+
+  // ── Delete account ────────────────────────────────────────────────────
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    setDeleteError("");
+    setDeleting(true);
+    try {
+      const credential = EmailAuthProvider.credential(
+        currentUser.email,
+        deletePassword,
+      );
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Delete Firestore user document first, then Auth account
+      await deleteDoc(doc(db, "users", currentUser.uid));
+      await deleteUser(currentUser);
+
+      await logout();
+      navigate("/");
+    } catch (err) {
+      if (
+        err.code === "auth/wrong-password" ||
+        err.code === "auth/invalid-credential"
+      ) {
+        setDeleteError("Incorrect password. Please try again.");
+      } else {
+        setDeleteError(err.message || "Failed to delete account.");
+      }
+    }
+    setDeleting(false);
+  };
+
+  const email = currentUser?.email || "—";
+  const displayName = nameSuccess
+    ? nameValue.trim()
+    : userProfile?.name || "—";
+  const role = ROLE_LABELS[userProfile?.role] || "—";
+
   return (
     <div className="dashboard">
-      <Sidebar role="manager" />
+      <Sidebar />
       <div className="dashboard-content">
-        <Header title="Settings" role="manager" />
+        <Header title="Settings" />
 
-        <div className="dashboard-main">
-          <div className="section">
-            <h2>Account Settings</h2>
-            <div className="settings-group">
-              <div className="setting-item">
-                <div className="setting-info">
-                  <h4>Email Notifications</h4>
-                  <p>Receive email updates about project changes</p>
+        <div className="settings-page">
+
+          {/* ── Profile ── */}
+          <div className="settings-section">
+            <h2 className="settings-section-title">Profile</h2>
+            <div className="settings-card">
+
+              {/* Name */}
+              <div className="setting-row">
+                <div className="setting-row-icon"><MdPerson /></div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Display Name</span>
+                  {editingName ? (
+                    <div className="setting-edit-inline">
+                      <input
+                        className="setting-input"
+                        value={nameValue}
+                        onChange={(e) => setNameValue(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && saveName()}
+                        autoFocus
+                      />
+                      {nameError && (
+                        <span className="setting-error">{nameError}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="setting-row-value">
+                      {displayName}
+                      {nameSuccess && (
+                        <span className="setting-success-inline"> ✓ Saved</span>
+                      )}
+                    </span>
+                  )}
                 </div>
-                <label className="toggle">
-                  <input type="checkbox" defaultChecked />
-                  <span className="toggle-slider"></span>
-                </label>
+                <div className="setting-row-action">
+                  {editingName ? (
+                    <>
+                      <button
+                        className="icon-btn confirm"
+                        onClick={saveName}
+                        disabled={nameSaving}
+                        title="Save"
+                      >
+                        <MdCheck />
+                      </button>
+                      <button
+                        className="icon-btn cancel"
+                        onClick={() => {
+                          setEditingName(false);
+                          setNameValue(userProfile?.name || "");
+                          setNameError("");
+                        }}
+                        title="Cancel"
+                      >
+                        <MdClose />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="icon-btn edit"
+                      onClick={() => setEditingName(true)}
+                      title="Edit name"
+                    >
+                      <MdEdit />
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="setting-item">
-                <div className="setting-info">
-                  <h4>Task Reminders</h4>
-                  <p>Get reminders about upcoming deadlines</p>
+
+              {/* Email */}
+              <div className="setting-row">
+                <div className="setting-row-icon"><MdEmail /></div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Email</span>
+                  <span className="setting-row-value">{email}</span>
                 </div>
-                <label className="toggle">
-                  <input type="checkbox" defaultChecked />
-                  <span className="toggle-slider"></span>
-                </label>
+              </div>
+
+              {/* Role */}
+              <div className="setting-row">
+                <div className="setting-row-icon"><MdBadge /></div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Role</span>
+                  <span className="setting-row-value">{role}</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* ── Security ── */}
+          <div className="settings-section">
+            <h2 className="settings-section-title">Security</h2>
+            <div className="settings-card">
+              <div className="setting-row">
+                <div className="setting-row-icon"><MdLock /></div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Password</span>
+                  {pwSuccess && (
+                    <span className="setting-success-inline"> ✓ Password updated</span>
+                  )}
+                  {!showChangePw && (
+                    <span className="setting-row-value">••••••••</span>
+                  )}
+                </div>
+                <div className="setting-row-action">
+                  {!showChangePw && (
+                    <button
+                      className="btn-outline-sm"
+                      onClick={() => {
+                        setShowChangePw(true);
+                        setPwSuccess(false);
+                      }}
+                    >
+                      Change
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {showChangePw && (
+                <form className="setting-form" onSubmit={handleChangePassword}>
+                  {pwError && (
+                    <div className="setting-error-box">{pwError}</div>
+                  )}
+                  <div className="setting-form-row">
+                    <label>Current password</label>
+                    <input
+                      type="password"
+                      className="setting-input"
+                      value={currentPw}
+                      onChange={(e) => setCurrentPw(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="setting-form-row">
+                    <label>New password</label>
+                    <input
+                      type="password"
+                      className="setting-input"
+                      value={newPw}
+                      onChange={(e) => setNewPw(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="setting-form-row">
+                    <label>Confirm new password</label>
+                    <input
+                      type="password"
+                      className="setting-input"
+                      value={confirmPw}
+                      onChange={(e) => setConfirmPw(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="setting-form-actions">
+                    <button
+                      type="submit"
+                      className="btn-primary-sm"
+                      disabled={pwSaving}
+                    >
+                      {pwSaving ? "Saving…" : "Update Password"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-ghost-sm"
+                      onClick={() => {
+                        setShowChangePw(false);
+                        setCurrentPw("");
+                        setNewPw("");
+                        setConfirmPw("");
+                        setPwError("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+
+          {/* ── Danger Zone ── */}
+          <div className="settings-section">
+            <h2 className="settings-section-title danger-title">Danger Zone</h2>
+            <div className="settings-card danger-card">
+              <div className="setting-row">
+                <div className="setting-row-icon danger-icon">
+                  <MdDeleteForever />
+                </div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Delete Account</span>
+                  <span className="setting-row-value muted">
+                    Permanently removes your account from Firebase Auth and all
+                    Firestore data.
+                  </span>
+                </div>
+                <div className="setting-row-action">
+                  <button
+                    className="btn-danger-sm"
+                    onClick={() => setShowDeleteModal(true)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="section">
-            <h2>Project Settings</h2>
-            <div className="settings-group">
-              <div className="setting-item">
-                <div className="setting-info">
-                  <h4>Default Project Duration</h4>
-                  <p>Set default timeline for new projects</p>
-                </div>
-                <select className="setting-select">
-                  <option>2 weeks</option>
-                  <option>1 month</option>
-                  <option>3 months</option>
-                  <option>6 months</option>
-                </select>
-              </div>
-              <div className="setting-item">
-                <div className="setting-info">
-                  <h4>Auto-archive completed projects</h4>
-                  <p>Automatically move completed projects to archive</p>
-                </div>
-                <label className="toggle">
-                  <input type="checkbox" />
-                  <span className="toggle-slider"></span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div className="section">
-            <h2>Danger Zone</h2>
-            <div className="settings-group danger">
-              <div className="setting-item">
-                <div className="setting-info">
-                  <h4>Delete Account</h4>
-                  <p>Permanently delete your account and all data</p>
-                </div>
-                <button className="btn-danger">Delete Account</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* ── Delete account confirmation modal ── */}
+      {showDeleteModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => {
+            setShowDeleteModal(false);
+            setDeletePassword("");
+            setDeleteError("");
+          }}
+        >
+          <div
+            className="modal-content settings-delete-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="modal-close"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setDeletePassword("");
+                setDeleteError("");
+              }}
+            >
+              <MdClose />
+            </button>
+            <div className="delete-modal-header">
+              <span className="delete-modal-icon">
+                <MdWarning />
+              </span>
+              <h2>Delete Account</h2>
+              <p>
+                This will permanently delete your account from Firebase Auth
+                and all your data from Firestore. This{" "}
+                <strong>cannot be undone</strong>.
+              </p>
+            </div>
+            {deleteError && (
+              <div className="setting-error-box">{deleteError}</div>
+            )}
+            <form onSubmit={handleDeleteAccount} className="auth-form">
+              <div className="form-group">
+                <label>Enter your password to confirm</label>
+                <input
+                  type="password"
+                  placeholder="Your current password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <button
+                type="submit"
+                className="btn-danger-full"
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Yes, permanently delete my account"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-export default SettingsPage;

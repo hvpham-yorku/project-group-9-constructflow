@@ -662,18 +662,19 @@ export default function BlueprintViewer() {
               )}
             </div>
 
-            {activeObjectId && (
-              <div className="drawing-hint">
-                ✏️ Click to add points · Double-click to finish · Ctrl+Z undo
-              </div>
-            )}
+          </div>
 
-            {isWorker && blueprintImage && (
-              <div className="worker-hint">
-                🟡 Highlighted = assigned to you &nbsp;·&nbsp; Click "Mark Done"
-                to complete
-              </div>
-            )}
+          {/* ── Hint bar — always same height so toolbar never shifts ── */}
+          <div className="blueprint-hint-bar">
+            {activeObjectId ? (
+              <span className="hint-chip drawing-hint">
+                ✏️ Click to add points · Double-click to finish · Ctrl+Z undo
+              </span>
+            ) : isWorker && blueprintImage ? (
+              <span className="hint-chip worker-hint">
+                🟡 Highlighted = assigned to you · Click "Mark Done" to complete
+              </span>
+            ) : null}
           </div>
 
           {/* ── Main area ── */}
