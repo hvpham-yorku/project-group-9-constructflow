@@ -55,6 +55,19 @@
   margin-bottom: 32px;
 }
 
+.modal-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  border-radius: 14px;
+  margin: 0 auto 16px;
+  font-size: 28px;
+  color: #fff;
+}
+
 .modal-header h2 {
   font-size: 28px;
   color: #2d3748;

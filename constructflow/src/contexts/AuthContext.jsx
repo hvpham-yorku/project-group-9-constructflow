@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
 const AuthContext = createContext();
@@ -21,18 +21,18 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  async function signup(email, password, name, role) {
-    // Create user in Firebase Auth
+  // Sign up — all new users start as "general" (no role, no org)
+  async function signup(email, password, name) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // Save user profile to Firestore
-    await setDoc(doc(db, "users", result.user.uid), {
+    const profile = {
+      uid: result.user.uid,
       email,
       name,
-      role,
+      role: "general", // no org yet
+      organizationId: null,
       createdAt: new Date().toISOString(),
-    });
-
+    };
+    await setDoc(doc(db, "users", result.user.uid), profile);
     return result;
   }
 
@@ -42,6 +42,24 @@ export function AuthProvider({ children }) {
 
   async function logout() {
     return signOut(auth);
+  }
+
+  // Refresh the local userProfile from Firestore (call after org/role changes)
+  async function refreshProfile() {
+    if (!currentUser) return;
+    try {
+      const snap = await getDoc(doc(db, "users", currentUser.uid));
+      setUserProfile(snap.exists() ? snap.data() : null);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Update any fields on the current user's Firestore doc and refresh local state
+  async function updateUserProfile(fields) {
+    if (!currentUser) return;
+    await updateDoc(doc(db, "users", currentUser.uid), fields);
+    setUserProfile((prev) => ({ ...prev, ...fields }));
   }
 
   useEffect(() => {
@@ -62,18 +80,28 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // Derived role helpers
+  const isManager = userProfile?.role === "manager";
+  const isWorker = ["carpenter", "electrician", "plumber"].includes(
+    userProfile?.role,
+  );
+  const hasOrg = Boolean(userProfile?.organizationId);
+  const organizationId = userProfile?.organizationId || null;
+
   const value = {
     currentUser,
     userProfile,
+    isManager,
+    isWorker,
+    hasOrg,
+    organizationId,
     signup,
     login,
     logout,
+    refreshProfile,
+    updateUserProfile,
     loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

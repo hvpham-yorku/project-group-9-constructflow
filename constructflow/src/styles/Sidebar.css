@@ -1,65 +1,88 @@
 .sidebar {
-  width: 220px;
-  background: #2d3748;
+  width: 230px;
+  background: linear-gradient(180deg, #1a1f2e 0%, #2d3561 100%);
   display: flex;
   flex-direction: column;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 2px 0 16px rgba(0, 0, 0, 0.25);
   position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
   height: 100vh;
   overflow-y: auto;
+  z-index: 100;
 }
 
+/* ── Header ──────────────────────────────────────────────────────── */
 .sidebar-header {
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-brand {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.sidebar-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
+.brand-icon {
+  font-size: 28px;
+  color: #ff6b35;
+  min-width: 28px;
 }
 
-.sidebar-header h2 {
-  color: white;
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
+.brand-text {
+  display: flex;
+  flex-direction: column;
 }
 
+.brand-name {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────── */
 .sidebar-nav {
   flex: 1;
-  padding: 8px 0;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  color: #a0aec0;
+  padding: 11px 14px;
+  color: #94a3b8;
   text-decoration: none;
   transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+  border-radius: 10px;
   font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .nav-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: white;
-  border-left-color: #ff6b35;
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
 }
 
 .nav-link.active {
-  background: #ff6b35;
-  color: white;
-  border-left-color: #ff6b35;
+  background: rgba(255, 107, 53, 0.18);
+  color: #ff6b35;
+  font-weight: 700;
+}
+
+.nav-link.active .nav-icon {
+  color: #ff6b35;
 }
 
 .nav-icon {
@@ -68,40 +91,63 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .nav-text {
   font-size: 14px;
-  font-weight: 500;
 }
 
+/* ── Footer ──────────────────────────────────────────────────────── */
 .sidebar-footer {
-  padding: 8px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.sidebar-footer .nav-link {
-  color: #fc8181;
-}
-
-.sidebar-footer .nav-link:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #feb2b2;
+  padding: 12px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .logout-link {
-  background: none;
-  border: none;
-  width: 100%;
   cursor: pointer;
   font-family: inherit;
+  color: #f87171 !important;
 }
 
+.logout-link:hover {
+  background: rgba(248, 113, 113, 0.12) !important;
+  color: #fca5a5 !important;
+}
+
+/* ── User card ───────────────────────────────────────────────────── */
 .sidebar-user {
   display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  margin-bottom: 4px;
+}
+
+.sidebar-user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.sidebar-user-info {
+  display: flex;
   flex-direction: column;
-  gap: 3px;
-  padding: 10px 16px 6px;
+  gap: 2px;
+  overflow: hidden;
 }
 
 .sidebar-user-name {
@@ -123,7 +169,23 @@
   width: fit-content;
 }
 
-.role-admin       { background: #ff6b35; color: white; }
-.role-plumber     { background: #dc2626; color: white; }
-.role-electrician { background: #2563eb; color: white; }
-
+.role-manager {
+  background: #ff6b35;
+  color: #fff;
+}
+.role-plumber {
+  background: #dc2626;
+  color: #fff;
+}
+.role-electrician {
+  background: #2563eb;
+  color: #fff;
+}
+.role-carpenter {
+  background: #7c3aed;
+  color: #fff;
+}
+.role-general {
+  background: #64748b;
+  color: #fff;
+}

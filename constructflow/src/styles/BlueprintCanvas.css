@@ -2,7 +2,7 @@
   width: 100%;
   height: 100%;
   background: #e8edf2;
-  position: relative;          /* SVG is positioned relative to this */
+  position: relative; /* SVG is positioned relative to this */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -92,6 +92,11 @@
 /* Connection = blue */
 .blueprint-object.connection {
   stroke: #2563eb;
+}
+
+/* Wood = brown */
+.blueprint-object.wood {
+  stroke: #92400e;
 }
 
 /* Worker's own assigned element — yellow (overrides type color) */

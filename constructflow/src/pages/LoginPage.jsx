@@ -16,8 +16,6 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState("worker");
-  const [workerRole, setWorkerRole] = useState("electrician");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { signup, login } = useAuth();
@@ -36,8 +34,7 @@ function LoginPage() {
 
     try {
       if (isSignUp) {
-        const roleData = role === "manager" ? "manager" : workerRole;
-        await signup(email, password, name, roleData);
+        await signup(email, password, name);
       } else {
         await login(email, password);
       }
@@ -76,33 +73,6 @@ function LoginPage() {
                     required
                   />
                 </div>
-
-                <div className="form-group">
-                  <label htmlFor="role">Account Type</label>
-                  <select
-                    id="role"
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                  >
-                    <option value="manager">Manager</option>
-                    <option value="worker">Worker</option>
-                  </select>
-                </div>
-
-                {role === "worker" && (
-                  <div className="form-group">
-                    <label htmlFor="workerRole">Specialty</label>
-                    <select
-                      id="workerRole"
-                      value={workerRole}
-                      onChange={(e) => setWorkerRole(e.target.value)}
-                    >
-                      <option value="electrician">Electrician</option>
-                      <option value="plumber">Plumber</option>
-                      <option value="carpenter">Carpenter</option>
-                    </select>
-                  </div>
-                )}
               </>
             )}
 
@@ -151,7 +121,9 @@ function LoginPage() {
 
           <div className="login-footer">
             <p>
-              {isSignUp ? "Already have an account? " : "Don't have an account? "}
+              {isSignUp
+                ? "Already have an account? "
+                : "Don't have an account? "}
               <button
                 type="button"
                 onClick={() => {

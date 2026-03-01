@@ -1,138 +1,271 @@
 /**
  * ManagerDashboard.jsx
  *
- * Main dashboard page for project managers. Displays an overview of all active projects,
- * key statistics (active projects, workers, tasks), and provides quick action buttons
- * for common tasks like uploading blueprints and managing workers. This is the default
- * landing page when users first access the application.
+ * Landing page for the organisation manager.
+ * Shows live stats (projects, workers, invite code) and quick links.
  */
 
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  MdFolder,
+  MdEngineering,
+  MdConstruction,
+  MdArrowForward,
+  MdBarChart,
+  MdSettings,
+} from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
-import ProjectCard from "../components/ProjectCard";
-import SignInGate from "../components/SignInGate";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
+import { db } from "../firebase";
 import "../styles/Dashboard.css";
 
-function ManagerDashboard() {
-  const { currentUser, userProfile } = useAuth();
-  const isAdmin = userProfile?.role === "admin";
+export default function ManagerDashboard() {
+  const { currentUser, userProfile, organizationId } = useAuth();
+  const navigate = useNavigate();
 
-  if (!currentUser) {
-    return (
-      <div className="dashboard">
-        <Sidebar />
-        <div className="dashboard-content">
-          <Header title="Manager Dashboard" role="manager" />
-          <div className="dashboard-main">
-            <SignInGate
-              title="Sign in to view dashboard"
-              message="Project metrics and active project details are hidden until you sign in."
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const [stats, setStats] = useState({
+    projects: 0,
+    workers: 0,
+    blueprints: 0,
+  });
+  const [orgData, setOrgData] = useState(null);
+  const [recentProjects, setRecentProjects] = useState([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [showCode, setShowCode] = useState(false);
 
-  if (!isAdmin) {
-    return (
-      <div className="dashboard">
-        <Sidebar />
-        <div className="dashboard-content">
-          <Header title="Manager Dashboard" role="manager" />
-          <div className="dashboard-main">
-            <SignInGate
-              title="Admin access required"
-              message="Only admin accounts can view the manager dashboard overview."
-              showSignInButton={false}
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!organizationId) return;
+    const load = async () => {
+      setLoadingData(true);
+      try {
+        // Org details (for invite code)
+        const orgSnap = await getDoc(doc(db, "organizations", organizationId));
+        if (orgSnap.exists()) setOrgData(orgSnap.data());
 
-  // Placeholder data for demonstration
-  const projects = [
-    {
-      id: 1,
-      name: "Building A - Phase 1",
-      status: "In Progress",
-      completion: 65,
-    },
-    {
-      id: 2,
-      name: "Building B - Electrical",
-      status: "Pending",
-      completion: 30,
-    },
-    {
-      id: 3,
-      name: "Building C - Plumbing",
-      status: "In Progress",
-      completion: 80,
-    },
-  ];
+        // Projects
+        const projQ = query(
+          collection(db, "projects"),
+          where("organizationId", "==", organizationId),
+        );
+        const projSnap = await getDocs(projQ);
+        const projs = projSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        projs.sort(
+          (a, b) =>
+            (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0),
+        );
+        setRecentProjects(projs.slice(0, 3));
+
+        // Workers (members who are not manager)
+        const workerQ = query(
+          collection(db, "users"),
+          where("organizationId", "==", organizationId),
+          where("role", "in", ["carpenter", "electrician", "plumber"]),
+        );
+        const workerSnap = await getDocs(workerQ);
+
+        setStats({
+          projects: projs.length,
+          workers: workerSnap.size,
+          blueprints: 0,
+        });
+      } catch (err) {
+        console.error("Dashboard load error:", err);
+      }
+      setLoadingData(false);
+    };
+    load();
+  }, [organizationId]);
+
+  const STATUS_COLORS = {
+    active: { bg: "#dcfce7", fg: "#16a34a" },
+    completed: { bg: "#dbeafe", fg: "#1d4ed8" },
+    pending: { bg: "#fef9c3", fg: "#b45309" },
+  };
 
   return (
     <div className="dashboard">
       <Sidebar />
       <div className="dashboard-content">
-        <Header title="Manager Dashboard" role="manager" />
+        <Header title="Dashboard" />
 
         <div className="dashboard-main">
-          <div className="dashboard-stats">
-            <div className="stat-card">
-              <h3>Active Projects</h3>
-              <p className="stat-number">12</p>
+          {/* ── Welcome banner ── */}
+          <div className="welcome-banner">
+            <div className="welcome-text">
+              <h2>
+                Welcome back, {userProfile?.name?.split(" ")[0] || "Manager"}
+              </h2>
+              <p>{orgData?.name || "Your Organisation"}</p>
             </div>
-            <div className="stat-card">
-              <h3>Total Workers</h3>
-              <p className="stat-number">48</p>
-            </div>
-            <div className="stat-card">
-              <h3>Completed Tasks</h3>
-              <p className="stat-number">156</p>
-            </div>
-            <div className="stat-card">
-              <h3>Pending Tasks</h3>
-              <p className="stat-number">23</p>
+            <div className="invite-code-box">
+              <span className="invite-label">Invite Code</span>
+              <span
+                className={`invite-code${showCode ? " visible" : ""}`}
+                onClick={() => setShowCode((v) => !v)}
+                title="Click to reveal/hide"
+              >
+                {showCode ? orgData?.inviteCode || "—" : "••••••"}
+              </span>
+              {showCode && orgData?.inviteCode && (
+                <button
+                  className="copy-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(orgData.inviteCode);
+                  }}
+                  title="Copy to clipboard"
+                >
+                  Copy
+                </button>
+              )}
             </div>
           </div>
 
+          {/* ── Stats ── */}
+          <div className="dashboard-stats">
+            <div className="stat-card">
+              <div className="stat-icon">
+                <MdFolder />
+              </div>
+              <div>
+                <p className="stat-label">Projects</p>
+                <p className="stat-number">
+                  {loadingData ? "—" : stats.projects}
+                </p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">
+                <MdEngineering />
+              </div>
+              <div>
+                <p className="stat-label">Workers</p>
+                <p className="stat-number">
+                  {loadingData ? "—" : stats.workers}
+                </p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">
+                <MdConstruction />
+              </div>
+              <div>
+                <p className="stat-label">Organisation</p>
+                <p className="stat-org-name">{orgData?.name || "—"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Recent projects ── */}
           <div className="section">
             <div className="section-header">
               <h2>Recent Projects</h2>
-              <button className="btn-secondary">View All</button>
+              <button
+                className="btn-secondary"
+                onClick={() => navigate("/projects")}
+              >
+                View All <MdArrowForward />
+              </button>
             </div>
-            <div className="projects-grid">
-              {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            {loadingData ? (
+              <div className="loading-rows">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="loading-row" />
+                ))}
+              </div>
+            ) : recentProjects.length === 0 ? (
+              <div className="empty-state">
+                <p>
+                  No projects yet.{" "}
+                  <button
+                    className="link-btn"
+                    onClick={() => navigate("/projects")}
+                  >
+                    Create one →
+                  </button>
+                </p>
+              </div>
+            ) : (
+              <div className="recent-projects-list">
+                {recentProjects.map((p) => {
+                  const status = p.status || "active";
+                  const sc = STATUS_COLORS[status] || STATUS_COLORS.active;
+                  return (
+                    <div
+                      key={p.id}
+                      className="recent-project-row"
+                      onClick={() => navigate(`/projects/${p.id}/blueprints`)}
+                    >
+                      <span className="rp-icon">
+                        <MdConstruction />
+                      </span>
+                      <span className="rp-name">{p.name}</span>
+                      <span
+                        className="rp-status"
+                        style={{ background: sc.bg, color: sc.fg }}
+                      >
+                        {status}
+                      </span>
+                      <span className="rp-arrow">
+                        <MdArrowForward />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
+          {/* ── Quick Actions ── */}
           <div className="section">
             <div className="section-header">
               <h2>Quick Actions</h2>
             </div>
             <div className="quick-actions">
-              <button className="action-btn">
-                <span className="icon">📤</span>
-                Upload Blueprint
+              <button
+                className="action-btn"
+                onClick={() => navigate("/projects")}
+              >
+                <span className="action-icon">
+                  <MdFolder />
+                </span>
+                <span>Manage Projects</span>
               </button>
-              <button className="action-btn">
-                <span className="icon">📊</span>
-                View Reports
+              <button
+                className="action-btn"
+                onClick={() => navigate("/workers")}
+              >
+                <span className="action-icon">
+                  <MdEngineering />
+                </span>
+                <span>View Workers</span>
               </button>
-              <button className="action-btn">
-                <span className="icon">👥</span>
-                Manage Workers
+              <button
+                className="action-btn"
+                onClick={() => navigate("/reports")}
+              >
+                <span className="action-icon">
+                  <MdBarChart />
+                </span>
+                <span>Reports</span>
               </button>
-              <button className="action-btn">
-                <span className="icon">⚙️</span>
-                Settings
+              <button
+                className="action-btn"
+                onClick={() => navigate("/settings")}
+              >
+                <span className="action-icon">
+                  <MdSettings />
+                </span>
+                <span>Settings</span>
               </button>
             </div>
           </div>
@@ -141,5 +274,3 @@ function ManagerDashboard() {
     </div>
   );
 }
-
-export default ManagerDashboard;

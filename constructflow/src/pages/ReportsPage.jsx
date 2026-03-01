@@ -9,6 +9,7 @@
 
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
+import { MdBarChart, MdTrendingUp, MdAttachMoney } from "react-icons/md";
 import "../styles/Dashboard.css";
 
 function ReportsPage() {
@@ -52,7 +53,9 @@ function ReportsPage() {
 
             <div className="reports-list">
               <div className="report-item">
-                <div className="report-icon">📊</div>
+                <div className="report-icon">
+                  <MdBarChart />
+                </div>
                 <div className="report-info">
                   <h4>Monthly Project Summary - January 2026</h4>
                   <p>Generated on Feb 1, 2026</p>
@@ -60,7 +63,9 @@ function ReportsPage() {
                 <button className="btn-secondary">Download</button>
               </div>
               <div className="report-item">
-                <div className="report-icon">📈</div>
+                <div className="report-icon">
+                  <MdTrendingUp />
+                </div>
                 <div className="report-info">
                   <h4>Worker Performance Report</h4>
                   <p>Generated on Jan 28, 2026</p>
@@ -68,7 +73,9 @@ function ReportsPage() {
                 <button className="btn-secondary">Download</button>
               </div>
               <div className="report-item">
-                <div className="report-icon">💰</div>
+                <div className="report-icon">
+                  <MdAttachMoney />
+                </div>
                 <div className="report-info">
                   <h4>Budget Analysis - Q4 2025</h4>
                   <p>Generated on Jan 15, 2026</p>

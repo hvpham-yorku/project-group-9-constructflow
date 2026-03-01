@@ -1,8 +1,12 @@
 /**
  * Sidebar.jsx
  *
- * Role-aware navigation sidebar. Admins see all tabs. Workers (plumber/electrician)
- * see only Dashboard, Blueprints, and Settings.
+ * Role-aware navigation sidebar.
+ *   Manager  — Dashboard, Projects, Workers, Reports, Settings
+ *   Worker   — Dashboard, Projects, Settings
+ *
+ * Projects link goes to /projects (list); individual blueprints are accessed
+ * from within each project card.
  */
 
 import { useLocation, Link } from "react-router-dom";
@@ -10,45 +14,61 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   MdDashboard,
   MdFolder,
-  MdArchitecture,
   MdPeople,
   MdBarChart,
   MdSettings,
   MdLogout,
+  MdBusiness,
 } from "react-icons/md";
 import "../styles/Sidebar.css";
 
-const ADMIN_LINKS = [
-  { name: "Dashboard",  icon: MdDashboard,   path: "/dashboard" },
-  { name: "Projects",   icon: MdFolder,      path: "/projects" },
-  { name: "Blueprints", icon: MdArchitecture, path: "/blueprint" },
-  { name: "Workers",    icon: MdPeople,      path: "/workers" },
-  { name: "Reports",    icon: MdBarChart,    path: "/reports" },
-  { name: "Settings",   icon: MdSettings,    path: "/settings" },
+const MANAGER_LINKS = [
+  { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
+  { name: "Projects", icon: MdFolder, path: "/projects" },
+  { name: "Workers", icon: MdPeople, path: "/workers" },
+  { name: "Reports", icon: MdBarChart, path: "/reports" },
+  { name: "Settings", icon: MdSettings, path: "/settings" },
 ];
 
 const WORKER_LINKS = [
-  { name: "Dashboard",  icon: MdDashboard,   path: "/dashboard" },
-  { name: "Blueprints", icon: MdArchitecture, path: "/blueprint" },
-  { name: "Settings",   icon: MdSettings,    path: "/settings" },
+  { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
+  { name: "Projects", icon: MdFolder, path: "/projects" },
+  { name: "Settings", icon: MdSettings, path: "/settings" },
 ];
+
+const ROLE_LABELS = {
+  manager: "Manager",
+  carpenter: "Carpenter",
+  electrician: "Electrician",
+  plumber: "Plumber",
+  general: "General",
+};
 
 function Sidebar() {
   const location = useLocation();
-  const { logout, userProfile } = useAuth();
-
-  const isAdmin = userProfile?.role === "admin";
-  const links = isAdmin ? ADMIN_LINKS : WORKER_LINKS;
+  const { logout, userProfile, isManager } = useAuth();
+  const links = isManager ? MANAGER_LINKS : WORKER_LINKS;
 
   const handleLogout = async () => {
-    try { await logout(); } catch (err) { console.error("Logout failed:", err); }
+    try {
+      await logout();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   };
+
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(path + "/");
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
-        <img src="/logo.png" alt="ConstructFlow Logo" className="sidebar-logo" />
-        <h2>CONSTRUCTFLOW</h2>
+        <div className="sidebar-brand">
+          <MdBusiness className="brand-icon" />
+          <div className="brand-text">
+            <span className="brand-name">ConstructFlow</span>
+          </div>
+        </div>
       </div>
 
       <nav className="sidebar-nav">
@@ -58,7 +78,7 @@ function Sidebar() {
             <Link
               key={link.path}
               to={link.path}
-              className={`nav-link${location.pathname === link.path ? " active" : ""}`}
+              className={`nav-link${isActive(link.path) ? " active" : ""}`}
             >
               <Icon className="nav-icon" />
               <span className="nav-text">{link.name}</span>
@@ -70,13 +90,24 @@ function Sidebar() {
       <div className="sidebar-footer">
         {userProfile && (
           <div className="sidebar-user">
-            <span className="sidebar-user-name">{userProfile.name || "User"}</span>
-            <span className={`sidebar-user-role role-${userProfile.role}`}>
-              {userProfile.role}
-            </span>
+            <div className="sidebar-user-avatar">
+              {(userProfile.name || "U")[0].toUpperCase()}
+            </div>
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">
+                {userProfile.name || "User"}
+              </span>
+              <span className={`sidebar-user-role role-${userProfile.role}`}>
+                {ROLE_LABELS[userProfile.role] || userProfile.role}
+              </span>
+            </div>
           </div>
         )}
-        <button onClick={handleLogout} className="nav-link logout-link">
+        <button
+          onClick={handleLogout}
+          className="nav-link logout-link"
+          title="Logout"
+        >
           <MdLogout className="nav-icon" />
           <span className="nav-text">Logout</span>
         </button>

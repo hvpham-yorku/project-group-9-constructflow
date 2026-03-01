@@ -1,20 +1,19 @@
 /**
  * AuthModal.jsx
  *
- * Modal dialog component for user authentication (sign in/sign up). Provides a form with
- * email and password fields, validation, and error handling. Switches between sign in and
- * sign up modes. Integrates with Firebase Authentication for user management. Opens when
- * unauthenticated users click the user icon in the header.
+ * Clean sign-in / sign-up modal.
+ * Sign-up only asks for name + email + password — role is assigned later
+ * through the organisation flow (create org → manager; join org → worker type).
  */
 
 import { useState } from "react";
+import { MdConstruction, MdClose } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
 import "../styles/AuthModal.css";
 
 function AuthModal({ isOpen, onClose }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
-  const [role, setRole] = useState("plumber");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,87 +29,95 @@ function AuthModal({ isOpen, onClose }) {
     if (isSignUp && password !== confirmPassword) {
       return setError("Passwords do not match");
     }
+    if (isSignUp && name.trim().length < 2) {
+      return setError("Please enter your full name");
+    }
 
     setError("");
     setLoading(true);
 
     try {
       if (isSignUp) {
-        await signup(email, password, name, role);
+        await signup(email, password, name.trim());
       } else {
         await login(email, password);
       }
       onClose();
-      setEmail("");
-      setPassword("");
-      setConfirmPassword("");
+      reset();
     } catch (err) {
-      setError(err.message || "Failed to authenticate");
+      const msg =
+        err.code === "auth/email-already-in-use"
+          ? "An account with this email already exists."
+          : err.code === "auth/user-not-found" ||
+              err.code === "auth/wrong-password"
+            ? "Invalid email or password."
+            : err.message || "Failed to authenticate";
+      setError(msg);
     }
 
     setLoading(false);
   };
 
-  const switchMode = () => {
-    setIsSignUp(!isSignUp);
-    setError("");
+  const reset = () => {
+    setName("");
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setError("");
+  };
+
+  const switchMode = () => {
+    setIsSignUp((v) => !v);
+    reset();
   };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose}>
-          ✕
+        <button className="modal-close" onClick={onClose} aria-label="Close">
+          <MdClose />
         </button>
 
         <div className="modal-header">
-          <h2>{isSignUp ? "Create Account" : "Sign In"}</h2>
-          <p>Access ConstructFlow features</p>
+          <div className="modal-logo">
+            <MdConstruction />
+          </div>
+          <h2>{isSignUp ? "Create Account" : "Welcome Back"}</h2>
+          <p>
+            {isSignUp
+              ? "Join ConstructFlow today"
+              : "Sign in to your workspace"}
+          </p>
         </div>
 
         {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           {isSignUp && (
-            <>
-              <div className="form-group">
-                <label htmlFor="name">Name</label>
-                <input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="role">Role</label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="role-select"
-                >
-                  <option value="plumber">Plumber</option>
-                  <option value="electrician">Electrician</option>
-                </select>
-              </div>
-            </>
+            <div className="form-group">
+              <label htmlFor="name">Full Name</label>
+              <input
+                id="name"
+                type="text"
+                placeholder="John Smith"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+              />
+            </div>
           )}
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
-              placeholder="Enter your email"
+              placeholder="you@company.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              autoComplete="email"
             />
           </div>
 
@@ -119,10 +126,11 @@ function AuthModal({ isOpen, onClose }) {
             <input
               id="password"
               type="password"
-              placeholder="Enter your password"
+              placeholder={isSignUp ? "At least 6 characters" : "Your password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete={isSignUp ? "new-password" : "current-password"}
             />
           </div>
 
@@ -132,16 +140,17 @@ function AuthModal({ isOpen, onClose }) {
               <input
                 id="confirmPassword"
                 type="password"
-                placeholder="Confirm your password"
+                placeholder="Repeat password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                autoComplete="new-password"
               />
             </div>
           )}
 
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? "Please wait..." : isSignUp ? "Sign Up" : "Sign In"}
+            {loading ? "Please wait…" : isSignUp ? "Create Account" : "Sign In"}
           </button>
         </form>
 
