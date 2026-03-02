@@ -9,6 +9,51 @@
   overflow: hidden;
 }
 
+.zoom-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #d1d5db;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.zoom-btn {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  border-radius: 6px;
+  min-width: 30px;
+  height: 30px;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.zoom-btn:hover {
+  background: #f3f4f6;
+}
+
+.zoom-btn.fit {
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+}
+
+.zoom-value {
+  min-width: 48px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111827;
+}
+
 /* ── Placeholder ── */
 .blueprint-placeholder {
   text-align: center;
@@ -49,6 +94,8 @@
   /* Let the browser scale it while keeping aspect ratio */
   width: auto;
   height: auto;
+  transform-origin: center center;
+  transition: transform 0.08s ease-out;
   pointer-events: none;
   user-select: none;
 }
@@ -66,6 +113,20 @@
 
 .drawing-layer.dragging {
   cursor: grabbing;
+}
+
+.grid-layer {
+  pointer-events: none;
+}
+
+.grid-line {
+  stroke: rgba(30, 58, 138, 0.14);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.grid-line.major {
+  stroke: rgba(30, 58, 138, 0.28);
 }
 
 /* ── Path styles ── */
@@ -92,11 +153,6 @@
 /* Connection = blue */
 .blueprint-object.connection {
   stroke: #2563eb;
-}
-
-/* Wood = brown */
-.blueprint-object.wood {
-  stroke: #92400e;
 }
 
 /* Worker's own assigned element — yellow (overrides type color) */
@@ -142,4 +198,27 @@
   stroke-width: 2;
   pointer-events: none;
   vector-effect: non-scaling-stroke;
+}
+
+.path-point-triangle {
+  fill: #f59e0b;
+  stroke: white;
+  stroke-width: 1.5;
+  cursor: pointer;
+  vector-effect: non-scaling-stroke;
+}
+
+.path-point-triangle.selected {
+  filter: drop-shadow(0 0 4px rgba(30, 58, 138, 0.9));
+}
+
+.point-task-label {
+  fill: #1f2937;
+  font-size: 10px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 1.6;
+  pointer-events: none;
+  user-select: none;
 }

@@ -287,7 +287,7 @@ export default function ProjectsPage() {
                 <label>Project Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Building A – Phase 1"
+                  placeholder=""
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   required
@@ -303,7 +303,7 @@ export default function ProjectsPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Brief description…"
+                  placeholder=""
                   value={newDesc}
                   onChange={(e) => setNewDesc(e.target.value)}
                 />

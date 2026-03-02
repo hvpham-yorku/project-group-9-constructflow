@@ -9,7 +9,6 @@
 
 import { useState } from "react";
 import {
-  MdHandyman,
   MdElectricBolt,
   MdPlumbing,
   MdEngineering,
@@ -26,7 +25,6 @@ import {
   where,
   doc,
   updateDoc,
-  arrayUnion,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -42,12 +40,6 @@ function generateCode(len = 6) {
 }
 
 const WORKER_TYPES = [
-  {
-    value: "carpenter",
-    label: "Carpenter",
-    Icon: MdHandyman,
-    desc: "Wood framing, cabinets & finishing",
-  },
   {
     value: "electrician",
     label: "Electrician",
@@ -253,7 +245,7 @@ export default function OrganizationPage() {
               <label>Organisation Name</label>
               <input
                 type="text"
-                placeholder="e.g. Apex Construction Co."
+                placeholder=""
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 required
@@ -282,7 +274,7 @@ export default function OrganizationPage() {
               <label>Invite Code</label>
               <input
                 type="text"
-                placeholder="e.g. XK9R2T"
+                placeholder=""
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 required

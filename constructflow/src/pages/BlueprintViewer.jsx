@@ -2,13 +2,12 @@
  * BlueprintViewer.jsx
  *
  * Role-aware blueprint page (accessed via /projects/:projectId/blueprints)
- *   Manager — full edit: upload, draw pipe/connection/wood, assign, delete, save/update
+ *   Manager — full edit: upload, draw pipe/connection, assign, delete, save/update
  *   Worker  — read-only: select blueprint, view assigned elements, mark own elements complete
  *
- * Three drawing types:
+ * Drawing types:
  *   pipe       → plumbers    (blue)
  *   connection → electricians (yellow)
- *   wood       → carpenters  (brown)
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -49,14 +48,78 @@ const makeId = () => `obj-${Date.now()}-${_nextId++}`;
 const TYPE_TRADE = {
   pipe: "plumber",
   connection: "electrician",
-  wood: "carpenter",
 };
 
 const TYPE_LABELS = {
   pipe: "Pipe",
-  connection: "Connection",
-  wood: "Wood",
+  connection: "Wire",
 };
+
+const POINT_TASK_LABELS = {
+  fixture: "Fixture",
+};
+
+const ORDINAL_WORDS = {
+  1: "one",
+  2: "two",
+  3: "three",
+  4: "four",
+  5: "five",
+  6: "six",
+  7: "seven",
+  8: "eight",
+  9: "nine",
+  10: "ten",
+};
+
+const fixtureChipLabel = (pointTasks = [], pointIndex = 0) => {
+  const task = pointTasks[pointIndex];
+  if (task?.requiredType !== "fixture") return `P${pointIndex + 1}`;
+  const fixtureOrder = pointTasks
+    .slice(0, pointIndex + 1)
+    .filter((item) => item?.requiredType === "fixture").length;
+  const ordinalWord = ORDINAL_WORDS[fixtureOrder] || String(fixtureOrder);
+  return `Fixture ${ordinalWord}`;
+};
+
+const syncPointTasksWithPoints = (pointTasks = [], pointCount = 0) =>
+  Array.from({ length: pointCount }, (_, index) => {
+    const task = pointTasks[index] || {};
+    return {
+      requiredType: task.requiredType || null,
+      completed: Boolean(task.completed),
+      instructions: typeof task.instructions === "string" ? task.instructions : "",
+    };
+  });
+
+const withComputedCompletion = (obj) => {
+  const pathPoints = obj.pathPoints || [];
+  const pointTasks = syncPointTasksWithPoints(obj.pointTasks, pathPoints.length);
+  const requiredTasks = pointTasks.filter((task) => task.requiredType);
+  const completed =
+    requiredTasks.length > 0
+      ? requiredTasks.every((task) => task.completed)
+      : Boolean(obj.completed);
+
+  return {
+    ...obj,
+    pathPoints,
+    pointTasks,
+    completed,
+  };
+};
+
+const hydrateObject = (id, raw) =>
+  withComputedCompletion({
+    id,
+    type: raw.type,
+    pathPoints: raw.pathPoints || [],
+    pointTasks: raw.pointTasks || [],
+    assignedTo: raw.assignedTo || null,
+    assignedToName: raw.assignedToName || null,
+    completed: raw.completed || false,
+    drawing: Boolean(raw.drawing),
+  });
 
 export default function BlueprintViewer() {
   const { currentUser, userProfile, isManager, organizationId } = useAuth();
@@ -79,16 +142,19 @@ export default function BlueprintViewer() {
   // ── Drawing state ────────────────────────────────────────────────────
   const [activeObjectId, setActiveObjectId] = useState(null);
   const [selectedObjectId, setSelectedObjectId] = useState(null);
+  const [selectedPoint, setSelectedPoint] = useState(null);
+  const [activePlumbingTool, setActivePlumbingTool] = useState("pipe");
 
   // ── UI state ─────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeToolGroup, setActiveToolGroup] = useState("plumbing");
+  const [showGrid, setShowGrid] = useState(false);
 
   // ── Data ─────────────────────────────────────────────────────────────
   const [workers, setWorkers] = useState({
     plumbers: [],
     electricians: [],
-    carpenters: [],
   });
   const [savedBlueprints, setSavedBlueprints] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -156,19 +222,17 @@ export default function BlueprintViewer() {
           query(
             collection(db, "users"),
             where("organizationId", "==", organizationId),
-            where("role", "in", ["plumber", "electrician", "carpenter"]),
+            where("role", "in", ["plumber", "electrician"]),
           ),
         );
         const plumbers = [],
-          electricians = [],
-          carpenters = [];
+          electricians = [];
         snap.forEach((d) => {
           const data = { uid: d.id, ...d.data() };
           if (data.role === "plumber") plumbers.push(data);
           else if (data.role === "electrician") electricians.push(data);
-          else if (data.role === "carpenter") carpenters.push(data);
         });
-        setWorkers({ plumbers, electricians, carpenters });
+        setWorkers({ plumbers, electricians });
       } catch (err) {
         console.error("Fetch workers:", err);
       }
@@ -215,14 +279,14 @@ export default function BlueprintViewer() {
   const loadBlueprintData = (bp) => {
     setActiveObjectId(null);
     setSelectedObjectId(null);
+    setSelectedPoint(null);
+    setActivePlumbingTool("pipe");
     setBlueprintName(bp.name || "");
     setBlueprintImage(bp.imageUrl || null);
     setCurrentBlueprintId(bp.id);
-    const objs = Object.entries(bp.objects || {}).map(([id, obj]) => ({
-      id,
-      ...obj,
-      drawing: false,
-    }));
+    const objs = Object.entries(bp.objects || {}).map(([id, obj]) =>
+      hydrateObject(id, { ...obj, drawing: false }),
+    );
     setObjects(objs);
     setObjectsInitialized(false);
     setIsDirty(false);
@@ -252,6 +316,7 @@ export default function BlueprintViewer() {
         setBlueprintName("");
         setBlueprintImage(null);
         setObjects([]);
+        setSelectedPoint(null);
         setIsDirty(false);
         localStorage.removeItem(LS_KEY);
       }
@@ -291,6 +356,7 @@ export default function BlueprintViewer() {
       setBlueprintImage(url);
       setCurrentBlueprintId(null);
       setObjects([]);
+      setSelectedPoint(null);
       setIsDirty(false);
       setObjectsInitialized(false);
       if (!blueprintName) setBlueprintName(file.name.replace(/\.[^.]+$/, ""));
@@ -310,16 +376,19 @@ export default function BlueprintViewer() {
     const id = makeId();
     setObjects((prev) => [
       ...prev,
-      {
+      withComputedCompletion({
         id,
         type,
         pathPoints: [],
+        pointTasks: [],
         assignedTo: null,
         assignedToName: null,
         completed: false,
         drawing: true,
-      },
+      }),
     ]);
+    if (type === "pipe") setActivePlumbingTool("pipe");
+    setSelectedPoint(null);
     setActiveObjectId(id);
     setSelectedObjectId(id);
   };
@@ -339,12 +408,16 @@ export default function BlueprintViewer() {
 
   const handlePathUpdate = (id, points) =>
     setObjects((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, pathPoints: points } : o)),
+      prev.map((o) =>
+        o.id === id ? withComputedCompletion({ ...o, pathPoints: points }) : o,
+      ),
     );
 
   const handleFinishDrawing = (id) => {
     setObjects((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, drawing: false } : o)),
+      prev.map((o) =>
+        o.id === id ? withComputedCompletion({ ...o, drawing: false }) : o,
+      ),
     );
     setActiveObjectId(null);
   };
@@ -352,48 +425,36 @@ export default function BlueprintViewer() {
   const deleteObject = (id) => {
     if (id === activeObjectId) setActiveObjectId(null);
     if (id === selectedObjectId) setSelectedObjectId(null);
+    if (selectedPoint?.objectId === id) setSelectedPoint(null);
     setObjects((prev) => prev.filter((o) => o.id !== id));
   };
 
-  // ── Assign worker (manager only) ─────────────────────────────────
-  const assignWorker = (workerId) => {
-    const all = [
-      ...workers.plumbers,
-      ...workers.electricians,
-      ...workers.carpenters,
-    ];
-    const worker = all.find((w) => w.uid === workerId);
-    if (!worker) return;
-    setObjects((prev) =>
-      prev.map((o) =>
-        o.id === selectedObjectId
-          ? { ...o, assignedTo: worker.uid, assignedToName: worker.name }
-          : o,
-      ),
-    );
+  const selectObject = (objId) => {
+    if (activeObjectId) return;
+    setSelectedObjectId((prev) => {
+      const next = prev === objId ? null : objId;
+      if (selectedPoint && selectedPoint.objectId !== next) {
+        setSelectedPoint(null);
+      }
+      return next;
+    });
   };
 
-  // ── Mark complete ─────────────────────────────────────────────────
-  const toggleComplete = (id) => {
-    const obj = objects.find((o) => o.id === id);
-    if (!obj) return;
-    if (isWorker && (obj.assignedTo !== currentUid || !currentUid)) return;
-    const newCompleted = !obj.completed;
-    setObjects((prev) =>
-      prev.map((o) => (o.id === id ? { ...o, completed: newCompleted } : o)),
-    );
-    if (isWorker && currentBlueprintId) {
-      persistCompletion(id, newCompleted);
-    }
-  };
-
-  const persistCompletion = async (objId, completed) => {
+  const persistObjectForWorker = async (updatedObj) => {
+    if (!isWorker || !currentBlueprintId) return;
     try {
       const bp = savedBlueprints.find((b) => b.id === currentBlueprintId);
       if (!bp) return;
       const updatedObjects = { ...bp.objects };
-      if (updatedObjects[objId])
-        updatedObjects[objId] = { ...updatedObjects[objId], completed };
+      updatedObjects[updatedObj.id] = {
+        ...updatedObjects[updatedObj.id],
+        type: updatedObj.type,
+        pathPoints: updatedObj.pathPoints,
+        pointTasks: updatedObj.pointTasks || [],
+        assignedTo: updatedObj.assignedTo || null,
+        assignedToName: updatedObj.assignedToName || null,
+        completed: updatedObj.completed,
+      };
       await updateDoc(doc(db, "blueprints", currentBlueprintId), {
         objects: updatedObjects,
       });
@@ -404,6 +465,121 @@ export default function BlueprintViewer() {
       );
     } catch (err) {
       console.error("Failed to persist completion:", err);
+    }
+  };
+
+  const setPointRequiredType = (objId, pointIndex, requiredType) => {
+    setObjects((prev) =>
+      prev.map((obj) => {
+        if (obj.id !== objId) return obj;
+        if (obj.type !== "pipe") return obj;
+        const pointTasks = syncPointTasksWithPoints(
+          obj.pointTasks,
+          obj.pathPoints.length,
+        );
+        const current = pointTasks[pointIndex] || {
+          requiredType: null,
+          completed: false,
+          instructions: "",
+        };
+        pointTasks[pointIndex] = {
+          requiredType,
+          completed: requiredType ? current.completed : false,
+          instructions: current.instructions || "",
+        };
+        return withComputedCompletion({ ...obj, pointTasks });
+      }),
+    );
+  };
+
+  const updatePointInstructions = (objId, pointIndex, instructions) => {
+    if (!isManager) return;
+    setObjects((prev) =>
+      prev.map((obj) => {
+        if (obj.id !== objId) return obj;
+        const pointTasks = syncPointTasksWithPoints(
+          obj.pointTasks,
+          obj.pathPoints.length,
+        );
+        const current = pointTasks[pointIndex] || {
+          requiredType: null,
+          completed: false,
+          instructions: "",
+        };
+        pointTasks[pointIndex] = {
+          ...current,
+          instructions,
+        };
+        return withComputedCompletion({ ...obj, pointTasks });
+      }),
+    );
+  };
+
+  const handlePointToolHover = (objId, pointIndex, tool) => {
+    if (!isManager || tool !== "fixture") return;
+    const obj = objects.find((item) => item.id === objId);
+    if (!obj || obj.type !== "pipe") return;
+    const existingTask = obj.pointTasks?.[pointIndex];
+    if (existingTask?.requiredType === "fixture") return;
+    setPointRequiredType(objId, pointIndex, "fixture");
+    setSelectedObjectId(objId);
+    setSelectedPoint({ objectId: objId, pointIndex });
+  };
+
+  const togglePointComplete = (objId, pointIndex) => {
+    const target = objects.find((obj) => obj.id === objId);
+    if (!target) return;
+    const isOwn =
+      isWorker && currentUid !== null && target.assignedTo === currentUid;
+    const canComplete = isManager || isOwn;
+    const task = target.pointTasks?.[pointIndex];
+    if (!canComplete || !task?.requiredType) return;
+
+    const updated = withComputedCompletion({
+      ...target,
+      pointTasks: target.pointTasks.map((pointTask, index) =>
+        index === pointIndex
+          ? { ...pointTask, completed: !pointTask.completed }
+          : pointTask,
+      ),
+    });
+
+    setObjects((prev) => prev.map((obj) => (obj.id === objId ? updated : obj)));
+    if (isWorker) persistObjectForWorker(updated);
+  };
+
+  // ── Assign worker (manager only) ─────────────────────────────────
+  const assignWorker = (workerId) => {
+    const all = [...workers.plumbers, ...workers.electricians];
+    const worker = all.find((w) => w.uid === workerId);
+    if (!worker) return;
+    setObjects((prev) =>
+      prev.map((o) =>
+        o.id === selectedObjectId
+          ? withComputedCompletion({
+              ...o,
+              assignedTo: worker.uid,
+              assignedToName: worker.name,
+            })
+          : o,
+      ),
+    );
+  };
+
+  // ── Mark complete ─────────────────────────────────────────────────
+  const toggleComplete = (id) => {
+    const obj = objects.find((o) => o.id === id);
+    if (!obj) return;
+    const hasPointRequirements = (obj.pointTasks || []).some(
+      (task) => task.requiredType,
+    );
+    if (hasPointRequirements) return;
+    if (isWorker && (obj.assignedTo !== currentUid || !currentUid)) return;
+    const newCompleted = !obj.completed;
+    const updated = withComputedCompletion({ ...obj, completed: newCompleted });
+    setObjects((prev) => prev.map((o) => (o.id === id ? updated : o)));
+    if (isWorker && currentBlueprintId) {
+      persistObjectForWorker(updated);
     }
   };
 
@@ -420,6 +596,7 @@ export default function BlueprintViewer() {
         objectsMap[obj.id] = {
           type: obj.type,
           pathPoints: obj.pathPoints,
+          pointTasks: obj.pointTasks || [],
           assignedTo: obj.assignedTo || null,
           assignedToName: obj.assignedToName || null,
           completed: obj.completed,
@@ -461,7 +638,29 @@ export default function BlueprintViewer() {
     : null;
   const isDrawingPipe = activeType === "pipe";
   const isDrawingConnection = activeType === "connection";
-  const isDrawingWood = activeType === "wood";
+  const fixtureToolActive =
+    isManager &&
+    activeToolGroup === "plumbing" &&
+    activePlumbingTool === "fixture" &&
+    !activeObjectId;
+
+  const selectToolGroup = (group) => {
+    if (activeObjectId) cancelActiveDrawing();
+    setActiveToolGroup(group);
+    if (group === "plumbing" && activePlumbingTool !== "fixture") {
+      setActivePlumbingTool("pipe");
+    }
+  };
+
+  useEffect(() => {
+    if (!activeType) return;
+    if (activeType === "pipe") {
+      setActiveToolGroup("plumbing");
+      setActivePlumbingTool("pipe");
+      return;
+    }
+    setActiveToolGroup("electrical");
+  }, [activeType]);
 
   const canvasObjects = objects.map((obj) => ({
     ...obj,
@@ -484,7 +683,7 @@ export default function BlueprintViewer() {
       ? workers.plumbers
       : selectedObject.type === "connection"
         ? workers.electricians
-        : workers.carpenters
+        : []
     : [];
 
   if (!isAuthenticated) {
@@ -519,7 +718,7 @@ export default function BlueprintViewer() {
             {/* Blueprint name */}
             <input
               type="text"
-              placeholder="Blueprint Name"
+              placeholder=""
               value={blueprintName}
               onChange={(e) => isManager && setBlueprintName(e.target.value)}
               className={`blueprint-name-input${isWorker ? " readonly" : ""}`}
@@ -556,44 +755,6 @@ export default function BlueprintViewer() {
                 )}
 
                 <button
-                  className={`btn-secondary draw-btn pipe-btn${isDrawingPipe ? " active" : ""}`}
-                  onClick={() =>
-                    isDrawingPipe ? cancelActiveDrawing() : startDrawing("pipe")
-                  }
-                  disabled={!blueprintImage}
-                  title="Draw pipe (Plumbers)"
-                >
-                  <span className="draw-icon pipe-icon" />
-                  {isDrawingPipe ? "Cancel Pipe" : "Draw Pipe"}
-                </button>
-
-                <button
-                  className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
-                  onClick={() =>
-                    isDrawingConnection
-                      ? cancelActiveDrawing()
-                      : startDrawing("connection")
-                  }
-                  disabled={!blueprintImage}
-                  title="Draw wiring (Electricians)"
-                >
-                  <span className="draw-icon connection-icon" />
-                  {isDrawingConnection ? "Cancel Wiring" : "Draw Wiring"}
-                </button>
-
-                <button
-                  className={`btn-secondary draw-btn wood-btn${isDrawingWood ? " active" : ""}`}
-                  onClick={() =>
-                    isDrawingWood ? cancelActiveDrawing() : startDrawing("wood")
-                  }
-                  disabled={!blueprintImage}
-                  title="Draw wood (Carpenters)"
-                >
-                  <span className="draw-icon wood-icon" />
-                  {isDrawingWood ? "Cancel Wood" : "Draw Wood"}
-                </button>
-
-                <button
                   className="btn-secondary"
                   onClick={createNewBlueprint}
                   title="New blank blueprint"
@@ -616,6 +777,15 @@ export default function BlueprintViewer() {
             )}
 
             {/* Blueprint selector */}
+            <button
+              className={`btn-secondary${showGrid ? " active" : ""}`}
+              onClick={() => setShowGrid((prev) => !prev)}
+              disabled={!blueprintImage}
+              title="Toggle grid overlay"
+            >
+              Grid
+            </button>
+
             <div className="blueprint-selector" ref={dropdownRef}>
               <button
                 className="btn-secondary selector-btn"
@@ -663,6 +833,82 @@ export default function BlueprintViewer() {
             </div>
           </div>
 
+          {isManager && (
+            <div className={`tool-ribbon${!blueprintImage ? " disabled" : ""}`}>
+              <div
+                className="tool-group-switch"
+                role="tablist"
+                aria-label="Tool categories"
+              >
+                <button
+                  className={`btn-secondary tool-group-btn${activeToolGroup === "plumbing" ? " active" : ""}`}
+                  onClick={() => selectToolGroup("plumbing")}
+                  disabled={!blueprintImage}
+                  title="Open plumbing tools"
+                >
+                  PLUMBING TOOLS
+                </button>
+                <button
+                  className={`btn-secondary tool-group-btn${activeToolGroup === "electrical" ? " active" : ""}`}
+                  onClick={() => selectToolGroup("electrical")}
+                  disabled={!blueprintImage}
+                  title="Open electrical tools"
+                >
+                  ELECTRICAL TOOLS
+                </button>
+              </div>
+
+              <div className="tool-ribbon-tools">
+                {activeToolGroup === "plumbing" ? (
+                  <>
+                    <button
+                      className={`btn-secondary draw-btn pipe-btn${isDrawingPipe ? " active" : ""}`}
+                      onClick={() => {
+                        setActivePlumbingTool("pipe");
+                        isDrawingPipe
+                          ? cancelActiveDrawing()
+                          : startDrawing("pipe");
+                      }}
+                      disabled={!blueprintImage}
+                      title="Select pipe tool"
+                    >
+                      <span className="draw-icon pipe-icon" />
+                      {isDrawingPipe ? "Cancel Pipe" : "Pipe"}
+                    </button>
+                    <button
+                      className={`btn-secondary draw-btn fixture-btn${fixtureToolActive ? " active" : ""}`}
+                      onClick={() => {
+                        if (activeObjectId) cancelActiveDrawing();
+                        setActivePlumbingTool("fixture");
+                      }}
+                      disabled={!blueprintImage}
+                      title="Select fixture assignment tool"
+                    >
+                      <span className="draw-icon fixture-icon" />
+                      Fixture
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
+                    onClick={() =>
+                      isDrawingConnection
+                        ? cancelActiveDrawing()
+                        : startDrawing("connection")
+                    }
+                    disabled={!blueprintImage}
+                    title="Select wire tool"
+                  >
+                    <span className="draw-icon connection-icon" />
+                    {isDrawingConnection ? "Cancel Wire" : "Wire"}
+                  </button>
+                )}
+
+                <span className="tool-ribbon-note">More tools coming soon</span>
+              </div>
+            </div>
+          )}
+
           {/* ── Hint bar — always same height so toolbar never shifts ── */}
           <div className="blueprint-hint-bar">
             {activeObjectId ? (
@@ -684,15 +930,22 @@ export default function BlueprintViewer() {
                 objects={canvasObjects}
                 activeObjectId={isManager ? activeObjectId : null}
                 selectedObjectId={selectedObjectId}
+                selectedPoint={selectedPoint}
                 onPathUpdate={isManager ? handlePathUpdate : undefined}
                 onFinishDrawing={isManager ? handleFinishDrawing : undefined}
+                activePointTool={fixtureToolActive ? "fixture" : null}
+                onPointToolHover={isManager ? handlePointToolHover : undefined}
+                onPointSelected={({ objectId, pointIndex }) => {
+                  if (!activeObjectId) {
+                    setSelectedObjectId(objectId);
+                    setSelectedPoint({ objectId, pointIndex });
+                  }
+                }}
                 onObjectSelected={(obj) => {
-                  if (!activeObjectId)
-                    setSelectedObjectId((prev) =>
-                      prev === obj.id ? null : obj.id,
-                    );
+                  if (!activeObjectId) selectObject(obj.id);
                 }}
                 isWorker={isWorker}
+                showGrid={showGrid}
               />
             </div>
 
@@ -710,7 +963,7 @@ export default function BlueprintViewer() {
                       <>
                         No elements yet.
                         <br />
-                        Upload an image then draw pipes, connections, or wood.
+                        Upload an image then choose a tool and draw pipes or wires.
                       </>
                     ) : (
                       "Select a blueprint to view elements."
@@ -724,15 +977,15 @@ export default function BlueprintViewer() {
                     currentUid !== null &&
                     obj.assignedTo === currentUid;
                   const canComplete = isManager || isOwn;
+                  const hasPointRequirements = (obj.pointTasks || []).some(
+                    (task) => task.requiredType,
+                  );
                   return (
                     <div
                       key={obj.id}
                       className={`section-card ${obj.type}${selectedObjectId === obj.id ? " active" : ""}${obj.drawing ? " drawing-active" : ""}${isOwn ? " own-element" : ""}`}
                       onClick={() => {
-                        if (!activeObjectId)
-                          setSelectedObjectId((prev) =>
-                            prev === obj.id ? null : obj.id,
-                          );
+                        if (!activeObjectId) selectObject(obj.id);
                       }}
                     >
                       <div className="section-header">
@@ -755,7 +1008,7 @@ export default function BlueprintViewer() {
                           </span>
                         </div>
                         <div className="section-actions-inline">
-                          {canComplete && !obj.drawing && (
+                          {canComplete && !obj.drawing && !hasPointRequirements && (
                             <button
                               className={`btn-complete${obj.completed ? " done" : ""}`}
                               onClick={(e) => {
@@ -768,6 +1021,13 @@ export default function BlueprintViewer() {
                             >
                               {obj.completed ? "✓ Done" : "Mark Done"}
                             </button>
+                          )}
+                          {canComplete && !obj.drawing && hasPointRequirements && (
+                            <span
+                              className={`section-status${obj.completed ? " completed" : ""}`}
+                            >
+                              {obj.completed ? "✓ Auto Done" : "In Progress"}
+                            </span>
                           )}
                           {!canComplete && (
                             <span
@@ -812,6 +1072,107 @@ export default function BlueprintViewer() {
                           </span>
                         )}
                       </div>
+
+                      {obj.pathPoints?.length > 0 && (
+                        <div className="point-list">
+                          {obj.pathPoints.map((_, pointIndex) => {
+                            const pointTask = obj.pointTasks?.[pointIndex] || {
+                              requiredType: null,
+                              completed: false,
+                              instructions: "",
+                            };
+                            const isPointSelected =
+                              selectedPoint?.objectId === obj.id &&
+                              selectedPoint?.pointIndex === pointIndex;
+                            const canCompletePoint =
+                              pointTask.requiredType && (isManager || isOwn);
+
+                            return (
+                              <div
+                                key={`${obj.id}-point-${pointIndex}`}
+                                className={`point-row${isPointSelected ? " active" : ""}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (activeObjectId) return;
+                                  setSelectedObjectId(obj.id);
+                                  setSelectedPoint({
+                                    objectId: obj.id,
+                                    pointIndex,
+                                  });
+                                }}
+                              >
+                                <button
+                                  className="point-chip"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (activeObjectId) return;
+                                    setSelectedObjectId(obj.id);
+                                    setSelectedPoint({
+                                      objectId: obj.id,
+                                      pointIndex,
+                                    });
+                                  }}
+                                  type="button"
+                                >
+                                  ▲ {fixtureChipLabel(obj.pointTasks || [], pointIndex)}
+                                </button>
+
+                                {isManager ? (
+                                  <input
+                                    className={`point-task-input${pointTask.requiredType ? " assigned" : ""}`}
+                                    type="text"
+                                    value={pointTask.instructions || ""}
+                                    placeholder="No task"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (activeObjectId) return;
+                                      setSelectedObjectId(obj.id);
+                                      setSelectedPoint({
+                                        objectId: obj.id,
+                                        pointIndex,
+                                      });
+                                    }}
+                                    onChange={(e) =>
+                                      updatePointInstructions(
+                                        obj.id,
+                                        pointIndex,
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                ) : (
+                                  <span
+                                    className={`point-task${pointTask.requiredType ? " assigned" : ""}`}
+                                  >
+                                    {pointTask.instructions?.trim() ||
+                                      (pointTask.requiredType
+                                        ? POINT_TASK_LABELS[pointTask.requiredType] ||
+                                          pointTask.requiredType
+                                        : "No task")}
+                                  </span>
+                                )}
+
+                                {canCompletePoint && (
+                                  <button
+                                    className={`btn-point-complete${pointTask.completed ? " done" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      togglePointComplete(obj.id, pointIndex);
+                                    }}
+                                    title={
+                                      pointTask.completed
+                                        ? "Mark pending"
+                                        : "Mark complete"
+                                    }
+                                  >
+                                    {pointTask.completed ? "✓" : "Done"}
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -825,9 +1186,7 @@ export default function BlueprintViewer() {
                     <span className="worker-type-hint">
                       {selectedObject.type === "pipe"
                         ? " (Plumbers)"
-                        : selectedObject.type === "connection"
-                          ? " (Electricians)"
-                          : " (Carpenters)"}
+                        : " (Electricians)"}
                     </span>
                   </h4>
                   <select
@@ -846,9 +1205,7 @@ export default function BlueprintViewer() {
                       No{" "}
                       {selectedObject.type === "pipe"
                         ? "plumbers"
-                        : selectedObject.type === "connection"
-                          ? "electricians"
-                          : "carpenters"}{" "}
+                        : "electricians"}{" "}
                       in this organisation.
                     </p>
                   )}

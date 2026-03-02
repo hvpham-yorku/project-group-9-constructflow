@@ -44,15 +44,15 @@
 }
 
 .waction-btn.edit:hover {
-  border-color: #ff6b35;
-  color: #ff6b35;
-  background: #fff7f4;
+  border-color: #1e3a8a;
+  color: #1e3a8a;
+  background: #eff6ff;
 }
 
 .waction-btn.remove:hover {
   border-color: #fca5a5;
   color: #ef4444;
-  background: #fff1f2;
+  background: #e0e7ff;
 }
 
 .waction-btn.confirm {
@@ -68,7 +68,7 @@
 .waction-btn.cancel:hover {
   border-color: #fca5a5;
   color: #ef4444;
-  background: #fff1f2;
+  background: #e0e7ff;
 }
 
 /* ── Card footer row (role badge + joined date) ───────────────────── */
@@ -99,6 +99,6 @@
 }
 
 .role-select:focus {
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.12);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.12);
 }

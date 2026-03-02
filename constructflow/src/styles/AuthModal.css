@@ -65,7 +65,7 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   border-radius: 14px;
   margin: 0 auto 16px;
   font-size: 28px;
@@ -125,14 +125,14 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .btn-primary {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -145,7 +145,7 @@
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 10px 20px rgba(30, 58, 138, 0.3);
 }
 
 .btn-primary:disabled {
@@ -169,7 +169,7 @@
 .link-btn {
   background: none;
   border: none;
-  color: #ff6b35;
+  color: #1e3a8a;
   font-weight: 600;
   cursor: pointer;
   padding: 0;

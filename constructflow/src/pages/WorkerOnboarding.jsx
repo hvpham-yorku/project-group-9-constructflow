@@ -40,7 +40,7 @@ function WorkerOnboarding() {
                 <input
                   id="projectCode"
                   type="text"
-                  placeholder="Enter project code"
+                  placeholder=""
                   value={projectCode}
                   onChange={(e) => setProjectCode(e.target.value)}
                   required

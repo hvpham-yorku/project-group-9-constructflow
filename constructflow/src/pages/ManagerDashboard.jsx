@@ -12,7 +12,7 @@ import {
   MdEngineering,
   MdConstruction,
   MdArrowForward,
-  MdBarChart,
+  // MdBarChart,
   MdSettings,
 } from "react-icons/md";
 import Header from "../components/Header";
@@ -69,7 +69,7 @@ export default function ManagerDashboard() {
         const workerQ = query(
           collection(db, "users"),
           where("organizationId", "==", organizationId),
-          where("role", "in", ["carpenter", "electrician", "plumber"]),
+          where("role", "in", ["electrician", "plumber"]),
         );
         const workerSnap = await getDocs(workerQ);
 
@@ -249,6 +249,7 @@ export default function ManagerDashboard() {
                 </span>
                 <span>View Workers</span>
               </button>
+              {/*
               <button
                 className="action-btn"
                 onClick={() => navigate("/reports")}
@@ -258,6 +259,7 @@ export default function ManagerDashboard() {
                 </span>
                 <span>Reports</span>
               </button>
+              */}
               <button
                 className="action-btn"
                 onClick={() => navigate("/settings")}

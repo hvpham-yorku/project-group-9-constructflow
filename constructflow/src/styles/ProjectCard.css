@@ -71,7 +71,7 @@
 }
 
 .progress-percentage {
-  color: #ff6b35;
+  color: #1e3a8a;
   font-weight: 600;
 }
 
@@ -84,7 +84,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
   transition: width 0.3s ease;
 }
 

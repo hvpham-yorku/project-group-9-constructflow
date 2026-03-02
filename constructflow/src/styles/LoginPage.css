@@ -14,8 +14,8 @@
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 107, 53, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 107, 53, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(30, 58, 138, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 58, 138, 0.04) 1px, transparent 1px);
   background-size: 40px 40px;
   pointer-events: none;
 }
@@ -58,12 +58,12 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   border-radius: 18px;
   margin-bottom: 16px;
   font-size: 32px;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(255, 107, 53, 0.35);
+  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.35);
 }
 
 .login-brand h1 {
@@ -132,9 +132,9 @@
 
 .login-field input:focus {
   outline: none;
-  border-color: #ff6b35;
+  border-color: #1e3a8a;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
 }
 
 .login-field input::placeholder {
@@ -145,7 +145,7 @@
 .login-submit {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   color: #fff;
   border: none;
   border-radius: 10px;
@@ -154,13 +154,13 @@
   cursor: pointer;
   margin-top: 4px;
   transition: all 0.2s ease;
-  box-shadow: 0 4px 14px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 14px rgba(30, 58, 138, 0.3);
   letter-spacing: 0.2px;
 }
 
 .login-submit:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(255, 107, 53, 0.4);
+  box-shadow: 0 8px 20px rgba(30, 58, 138, 0.4);
 }
 
 .login-submit:disabled {
@@ -182,7 +182,7 @@
 .login-switch-btn {
   background: none;
   border: none;
-  color: #ff6b35;
+  color: #1e3a8a;
   font-weight: 700;
   font-size: 14px;
   cursor: pointer;

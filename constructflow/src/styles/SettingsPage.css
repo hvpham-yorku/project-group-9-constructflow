@@ -59,7 +59,7 @@
 }
 
 .setting-row-icon.danger-icon {
-  background: #fff1f2;
+  background: #e0e7ff;
   color: #ef4444;
 }
 
@@ -110,9 +110,9 @@
 }
 
 .icon-btn.edit:hover {
-  border-color: #ff6b35;
-  color: #ff6b35;
-  background: #fff7f4;
+  border-color: #1e3a8a;
+  color: #1e3a8a;
+  background: #eff6ff;
 }
 
 .icon-btn.confirm {
@@ -128,7 +128,7 @@
 .icon-btn.cancel:hover {
   border-color: #fca5a5;
   color: #ef4444;
-  background: #fff1f2;
+  background: #e0e7ff;
 }
 
 /* ── Inline edit input ───────────────────────────────────────── */
@@ -149,8 +149,8 @@
 }
 
 .setting-input:focus {
-  border-color: #ff6b35;
-  box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.12);
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.12);
 }
 
 /* ── Feedback ────────────────────────────────────────────────── */
@@ -162,7 +162,7 @@
 .setting-error-box {
   margin: 0 20px 12px;
   padding: 10px 14px;
-  background: #fff1f2;
+  background: #e0e7ff;
   border: 1px solid #fecaca;
   border-radius: 8px;
   font-size: 13px;
@@ -189,8 +189,8 @@
 }
 
 .btn-outline-sm:hover {
-  border-color: #ff6b35;
-  color: #ff6b35;
+  border-color: #1e3a8a;
+  color: #1e3a8a;
 }
 
 /* ── Change-password form ────────────────────────────────────── */
@@ -221,7 +221,7 @@
 
 .btn-primary-sm {
   padding: 8px 18px;
-  background: #ff6b35;
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;
@@ -232,7 +232,7 @@
 }
 
 .btn-primary-sm:hover:not(:disabled) {
-  background: #e85d2a;
+  background: #1d4ed8;
 }
 
 .btn-primary-sm:disabled {
@@ -270,7 +270,7 @@
 }
 
 .btn-danger-sm:hover {
-  background: #fff1f2;
+  background: #e0e7ff;
   border-color: #ef4444;
 }
 
@@ -314,7 +314,7 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: #fff1f2;
+  background: #e0e7ff;
   color: #dc2626;
   font-size: 28px;
   margin-bottom: 12px;

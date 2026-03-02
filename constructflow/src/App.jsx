@@ -18,7 +18,7 @@ import WorkerDashboard from "./pages/WorkerDashboard";
 import BlueprintViewer from "./pages/BlueprintViewer";
 import ProjectsPage from "./pages/ProjectsPage";
 import WorkersPage from "./pages/WorkersPage";
-import ReportsPage from "./pages/ReportsPage";
+// import ReportsPage from "./pages/ReportsPage"; // Temporarily disabled
 import SettingsPage from "./pages/SettingsPage";
 import "./App.css";
 
@@ -33,7 +33,7 @@ function Spinner() {
         background: "#1a1f2e",
       }}
     >
-      <div style={{ color: "#ff6b35", fontSize: 18, fontWeight: 600 }}>
+      <div style={{ color: "#1e3a8a", fontSize: 18, fontWeight: 600 }}>
         Loading…
       </div>
     </div>
@@ -67,7 +67,7 @@ function DashboardRouter() {
           element={<BlueprintViewer />}
         />
         <Route path="/workers" element={<WorkersPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
+        {/* <Route path="/reports" element={<ReportsPage />} /> */}
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

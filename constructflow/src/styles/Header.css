@@ -56,7 +56,7 @@
   position: absolute;
   top: 4px;
   right: 4px;
-  background: #ff6b35;
+  background: #1e3a8a;
   color: white;
   font-size: 10px;
   padding: 2px 5px;
@@ -82,7 +82,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -114,5 +114,5 @@
 }
 
 .logout-btn:hover {
-  color: #ff6b35;
+  color: #1e3a8a;
 }

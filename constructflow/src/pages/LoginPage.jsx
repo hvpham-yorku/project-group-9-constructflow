@@ -93,7 +93,7 @@ function LoginPage() {
               <input
                 id="lp-name"
                 type="text"
-                placeholder="John Smith"
+                placeholder=""
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -108,7 +108,7 @@ function LoginPage() {
             <input
               id="lp-email"
               type="email"
-              placeholder="you@company.com"
+              placeholder=""
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -122,7 +122,7 @@ function LoginPage() {
             <input
               id="lp-password"
               type="password"
-              placeholder={isSignUp ? "At least 6 characters" : "Your password"}
+              placeholder=""
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -136,7 +136,7 @@ function LoginPage() {
               <input
                 id="lp-confirm"
                 type="password"
-                placeholder="Repeat password"
+                placeholder=""
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required

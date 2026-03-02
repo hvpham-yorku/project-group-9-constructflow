@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { MdArchitecture } from "react-icons/md";
 import "../styles/BlueprintCanvas.css";
 
@@ -22,7 +22,12 @@ function BlueprintCanvas({
   onFinishDrawing,
   onObjectSelected,
   selectedObjectId,
+  selectedPoint,
+  activePointTool = null,
+  onPointToolHover,
+  onPointSelected,
   isWorker = false,
+  showGrid = false,
 }) {
   // ── Drawing state ─────────────────────────────────────────────────────────
   const [currentPoints, setCurrentPoints] = useState([]);
@@ -36,9 +41,29 @@ function BlueprintCanvas({
   // ── Image overlay geometry ────────────────────────────────────────────────
   const [imgRect, setImgRect] = useState(null);     // rendered rect inside container
   const [naturalSize, setNaturalSize] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [shiftPressed, setShiftPressed] = useState(false);
 
   const containerRef = useRef(null);
   const imgRef = useRef(null);
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 4;
+
+  const clampZoom = useCallback(
+    (value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)),
+    [],
+  );
+
+  const changeZoom = useCallback(
+    (delta) => {
+      setZoom((prev) => clampZoom(prev + delta));
+    },
+    [clampZoom],
+  );
+
+  const resetZoom = useCallback(() => {
+    setZoom(1);
+  }, []);
 
   // ── Measure rendered image rect ───────────────────────────────────────────
   const measureImage = useCallback(() => {
@@ -69,7 +94,12 @@ function BlueprintCanvas({
   useEffect(() => {
     setImgRect(null);
     setNaturalSize(null);
+    setZoom(1);
   }, [imageUrl]);
+
+  useEffect(() => {
+    measureImage();
+  }, [zoom, measureImage]);
 
   // ── Reset drawing state when active element changes ───────────────────────
   useEffect(() => {
@@ -105,6 +135,31 @@ function BlueprintCanvas({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === "Shift") setShiftPressed(true);
+    };
+    const onKeyUp = (e) => {
+      if (e.key === "Shift") setShiftPressed(false);
+    };
+    const onWindowBlur = () => setShiftPressed(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onWindowBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onWindowBlur);
+    };
+  }, []);
+
+  const handleWheelZoom = (e) => {
+    if (!imageUrl) return;
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+    changeZoom(delta);
+  };
+
   // ── Coordinate conversion: client → natural-image pixels ─────────────────
   const clientToSvg = useCallback((clientX, clientY) => {
     if (!imgRect || !naturalSize) return { x: 0, y: 0 };
@@ -119,10 +174,50 @@ function BlueprintCanvas({
     };
   }, [imgRect, naturalSize]);
 
+  const gridSpacing = useMemo(() => {
+    if (!imgRect || !naturalSize) return null;
+    const zoomStep = Math.floor(Math.log2(Math.max(zoom, 0.001)));
+    const baseScreenSpacing = 40;
+    const screenSpacing = Math.min(
+      120,
+      Math.max(12, baseScreenSpacing * Math.pow(2, -zoomStep)),
+    );
+    return (screenSpacing / imgRect.width) * naturalSize.w;
+  }, [imgRect, naturalSize, zoom]);
+
+  const gridLines = useMemo(() => {
+    if (!showGrid || !gridSpacing || !naturalSize) return { x: [], y: [] };
+    const x = [];
+    const y = [];
+    for (let position = 0; position <= naturalSize.w; position += gridSpacing) {
+      x.push(position);
+    }
+    for (let position = 0; position <= naturalSize.h; position += gridSpacing) {
+      y.push(position);
+    }
+    return { x, y };
+  }, [showGrid, gridSpacing, naturalSize]);
+
+  const snapToGrid = useCallback(
+    (point) => {
+      if (!gridSpacing || !naturalSize) return point;
+      const snappedX = Math.round(point.x / gridSpacing) * gridSpacing;
+      const snappedY = Math.round(point.y / gridSpacing) * gridSpacing;
+      return {
+        x: Math.min(naturalSize.w, Math.max(0, snappedX)),
+        y: Math.min(naturalSize.h, Math.max(0, snappedY)),
+      };
+    },
+    [gridSpacing, naturalSize],
+  );
+
+  const activeType = objects.find((o) => o.id === activeObjectId)?.type || "";
+
   // ── SVG drawing handlers ──────────────────────────────────────────────────
   const handleSvgMouseMove = (e) => {
     if (activeObjectId) {
-      setMousePos(clientToSvg(e.clientX, e.clientY));
+      const raw = clientToSvg(e.clientX, e.clientY);
+      setMousePos(shiftPressed ? snapToGrid(raw) : raw);
     }
     if (dragging) {
       handleDragMove(e);
@@ -131,7 +226,8 @@ function BlueprintCanvas({
 
   const handleSvgClick = (e) => {
     if (!activeObjectId || dragging) return;
-    const pos = clientToSvg(e.clientX, e.clientY);
+    const raw = clientToSvg(e.clientX, e.clientY);
+    const pos = shiftPressed ? snapToGrid(raw) : raw;
     setCurrentPoints((prev) => [...prev, pos]);
     setRedoStack([]);
   };
@@ -167,10 +263,13 @@ function BlueprintCanvas({
   // ── Drag-to-reposition handlers ───────────────────────────────────────────
   const handlePathMouseDown = (e, obj) => {
     if (activeObjectId) return; // don't drag while drawing
+
+    if (obj.id !== selectedObjectId) {
+      return;
+    }
+
     e.stopPropagation();
     e.preventDefault();
-
-    onObjectSelected && onObjectSelected(obj);
 
     dragRef.current = {
       startClient: { x: e.clientX, y: e.clientY },
@@ -217,7 +316,11 @@ function BlueprintCanvas({
     return `M ${last.x.toFixed(2)} ${last.y.toFixed(2)} L ${mousePos.x.toFixed(2)} ${mousePos.y.toFixed(2)}`;
   };
 
-  const activeType = objects.find((o) => o.id === activeObjectId)?.type || "";
+  const trianglePoints = (point, size = 7) => {
+    const x = point.x;
+    const y = point.y;
+    return `${x},${y - size} ${x - size * 0.92},${y + size * 0.85} ${x + size * 0.92},${y + size * 0.85}`;
+  };
 
   // ── Placeholder ───────────────────────────────────────────────────────────
   if (!imageUrl) {
@@ -235,12 +338,45 @@ function BlueprintCanvas({
   }
 
   return (
-    <div className="blueprint-canvas active" ref={containerRef}>
+    <div
+      className="blueprint-canvas active"
+      ref={containerRef}
+      onWheel={handleWheelZoom}
+    >
+      <div className="zoom-controls" role="group" aria-label="Blueprint zoom controls">
+        <button
+          type="button"
+          className="zoom-btn"
+          onClick={() => changeZoom(-0.1)}
+          title="Zoom out"
+        >
+          −
+        </button>
+        <span className="zoom-value">{Math.round(zoom * 100)}%</span>
+        <button
+          type="button"
+          className="zoom-btn"
+          onClick={() => changeZoom(0.1)}
+          title="Zoom in"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          className="zoom-btn fit"
+          onClick={resetZoom}
+          title="Reset zoom"
+        >
+          Fit
+        </button>
+      </div>
+
       <img
         ref={imgRef}
         src={imageUrl}
         alt="Blueprint"
         className="blueprint-image"
+        style={{ transform: `scale(${zoom})` }}
         onLoad={measureImage}
         draggable={false}
       />
@@ -267,6 +403,31 @@ function BlueprintCanvas({
             if (dragging) handleDragEnd();
           }}
         >
+          {showGrid && (
+            <g className="grid-layer">
+              {gridLines.x.map((xLine, index) => (
+                <line
+                  key={`grid-x-${index}`}
+                  x1={xLine}
+                  y1={0}
+                  x2={xLine}
+                  y2={naturalSize.h}
+                  className={`grid-line${index % 5 === 0 ? " major" : ""}`}
+                />
+              ))}
+              {gridLines.y.map((yLine, index) => (
+                <line
+                  key={`grid-y-${index}`}
+                  x1={0}
+                  y1={yLine}
+                  x2={naturalSize.w}
+                  y2={yLine}
+                  className={`grid-line${index % 5 === 0 ? " major" : ""}`}
+                />
+              ))}
+            </g>
+          )}
+
           {/* Finished / in-progress objects */}
           {objects.map((obj) => {
             const isSelected = obj.id === selectedObjectId;
@@ -303,6 +464,30 @@ function BlueprintCanvas({
                     onObjectSelected && onObjectSelected(obj);
                   }}
                 />
+
+                {(obj.pathPoints || []).map((point, pointIndex) => {
+                  const isPointSelected =
+                    selectedPoint?.objectId === obj.id &&
+                    selectedPoint?.pointIndex === pointIndex;
+
+                  return (
+                    <g key={`${obj.id}-point-${pointIndex}`}>
+                      <polygon
+                        points={trianglePoints(point)}
+                        className={`path-point-triangle${isPointSelected ? " selected" : ""}`}
+                        onClick={(e) => {
+                          if (activeObjectId || dragging) return;
+                          e.stopPropagation();
+                          if (activePointTool && onPointToolHover) {
+                            onPointToolHover(obj.id, pointIndex, activePointTool);
+                          }
+                          onPointSelected &&
+                            onPointSelected({ objectId: obj.id, pointIndex });
+                        }}
+                      />
+                    </g>
+                  );
+                })}
               </g>
             );
           })}

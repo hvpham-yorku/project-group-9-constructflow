@@ -35,14 +35,12 @@ import "../styles/SettingsPage.css";
 
 const ROLE_LABELS = {
   manager: "Manager",
-  carpenter: "Carpenter",
   electrician: "Electrician",
   plumber: "Plumber",
   general: "No role assigned",
 };
 
 const WORKER_ROLES = [
-  { value: "carpenter", label: "Carpenter" },
   { value: "electrician", label: "Electrician" },
   { value: "plumber", label: "Plumber" },
 ];
@@ -153,7 +151,7 @@ export default function SettingsPage() {
   };
 
   // ── Role change (workers only) ──────────────────────────────────────────
-  const isWorkerRole = ["carpenter", "electrician", "plumber"].includes(
+  const isWorkerRole = ["electrician", "plumber"].includes(
     userProfile?.role,
   );
   const [editingRole, setEditingRole] = useState(false);
@@ -511,7 +509,7 @@ export default function SettingsPage() {
                 <label>Enter your password to confirm</label>
                 <input
                   type="password"
-                  placeholder="Your current password"
+                  placeholder=""
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   required
