@@ -82,7 +82,7 @@ export function AuthProvider({ children }) {
 
   // Derived role helpers
   const isManager = userProfile?.role === "manager";
-  const isWorker = ["carpenter", "electrician", "plumber"].includes(
+  const isWorker = ["electrician", "plumber"].includes(
     userProfile?.role,
   );
   const hasOrg = Boolean(userProfile?.organizationId);

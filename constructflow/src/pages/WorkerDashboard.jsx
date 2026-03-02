@@ -22,15 +22,13 @@ import { db } from "../firebase";
 import "../styles/Dashboard.css";
 
 const ROLE_LABELS = {
-  carpenter: "Carpenter",
   electrician: "Electrician",
   plumber: "Plumber",
 };
 
 const ROLE_COLORS = {
-  carpenter: { bg: "#f3e8ff", fg: "#7c3aed" },
   electrician: { bg: "#eff6ff", fg: "#2563eb" },
-  plumber: { bg: "#fff1f2", fg: "#be123c" },
+  plumber: { bg: "#e0e7ff", fg: "#be123c" },
 };
 
 export default function WorkerDashboard() {

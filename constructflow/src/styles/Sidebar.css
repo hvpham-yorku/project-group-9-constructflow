@@ -27,7 +27,7 @@
 
 .brand-icon {
   font-size: 28px;
-  color: #ff6b35;
+  color: #fff;
   min-width: 28px;
 }
 
@@ -76,13 +76,13 @@
 }
 
 .nav-link.active {
-  background: rgba(255, 107, 53, 0.18);
-  color: #ff6b35;
+  background: rgba(30, 58, 138, 0.18);
+  color: #fff;
   font-weight: 700;
 }
 
 .nav-link.active .nav-icon {
-  color: #ff6b35;
+  color: #fff;
 }
 
 .nav-icon {
@@ -133,7 +133,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,7 +170,7 @@
 }
 
 .role-manager {
-  background: #ff6b35;
+  background: #1e3a8a;
   color: #fff;
 }
 .role-plumber {
@@ -179,10 +179,6 @@
 }
 .role-electrician {
   background: #2563eb;
-  color: #fff;
-}
-.role-carpenter {
-  background: #7c3aed;
   color: #fff;
 }
 .role-general {

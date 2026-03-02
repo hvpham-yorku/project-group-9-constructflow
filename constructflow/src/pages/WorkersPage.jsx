@@ -25,20 +25,17 @@ import "../styles/Dashboard.css";
 import "../styles/WorkersPage.css";
 
 const ROLE_COLORS = {
-  carpenter: { bg: "#f3e8ff", fg: "#7c3aed" },
   electrician: { bg: "#eff6ff", fg: "#2563eb" },
-  plumber: { bg: "#fff1f2", fg: "#be123c" },
-  manager: { bg: "#fff7ed", fg: "#c2410c" },
+  plumber: { bg: "#e0e7ff", fg: "#be123c" },
+  manager: { bg: "#eff6ff", fg: "#1e3a8a" },
 };
 
 const WORKER_ROLES = [
-  { value: "carpenter", label: "Carpenter" },
   { value: "electrician", label: "Electrician" },
   { value: "plumber", label: "Plumber" },
 ];
 
 const ROLE_LABELS = {
-  carpenter: "Carpenter",
   electrician: "Electrician",
   plumber: "Plumber",
   manager: "Manager",

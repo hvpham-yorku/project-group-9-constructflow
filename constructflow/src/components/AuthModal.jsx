@@ -99,7 +99,7 @@ function AuthModal({ isOpen, onClose }) {
               <input
                 id="name"
                 type="text"
-                placeholder="John Smith"
+                placeholder=""
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -113,7 +113,7 @@ function AuthModal({ isOpen, onClose }) {
             <input
               id="email"
               type="email"
-              placeholder="you@company.com"
+              placeholder=""
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -126,7 +126,7 @@ function AuthModal({ isOpen, onClose }) {
             <input
               id="password"
               type="password"
-              placeholder={isSignUp ? "At least 6 characters" : "Your password"}
+              placeholder=""
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -140,7 +140,7 @@ function AuthModal({ isOpen, onClose }) {
               <input
                 id="confirmPassword"
                 type="password"
-                placeholder="Repeat password"
+                placeholder=""
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required

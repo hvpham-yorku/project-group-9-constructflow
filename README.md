@@ -13,7 +13,7 @@ Customer meeting’s summary video: https://youtu.be/ytbclsm6Geg [![YouTube](htt
 
 "Planning Document.pdf" has been revised. New document is in the `deliverables` folder titled [PlanningDocument-UpdatedMarch1.pdf](deliverables/PlanningDocument-UpdatedMarch1.pdf).   
 Change made:  
-Blueprint is used as a helper for tasks, rather than it serving as the main workspace.
+Blueprint is used as a helper for the tasks assigned, rather than it serving as the main workspace. Our customer suggested using the blueprint feature as an addition to assigning tasks to promote better organization and clarity. Having the blueprint as the main workspace would cause confusion for the workers.
 
 ---
 

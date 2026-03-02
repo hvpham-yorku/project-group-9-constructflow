@@ -47,14 +47,14 @@
 }
 
 .filter-btn:hover {
-  border-color: #ff6b35;
-  color: #ff6b35;
+  border-color: #1e3a8a;
+  color: #1e3a8a;
 }
 
 .filter-btn.active {
-  background: #ff6b35;
+  background: #1e3a8a;
   color: #fff;
-  border-color: #ff6b35;
+  border-color: #1e3a8a;
 }
 
 /* ── Grid ────────────────────────────────────────────────────────── */
@@ -81,7 +81,7 @@
 .project-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
-  border-color: #ff6b35;
+  border-color: #1e3a8a;
 }
 
 .project-card-top {
@@ -144,7 +144,7 @@
 
 .btn-view {
   padding: 6px 14px;
-  background: #ff6b35;
+  background: #1e3a8a;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -155,7 +155,7 @@
 }
 
 .btn-view:hover {
-  background: #e55a26;
+  background: #1d4ed8;
   transform: translateX(2px);
 }
 
@@ -175,7 +175,7 @@
 }
 
 .btn-delete-sm:hover {
-  background: #fff5f5;
+  background: #eff6ff;
   border-color: #fc8181;
   color: #e53e3e;
 }
@@ -239,7 +239,7 @@
   width: 36px;
   height: 36px;
   border: 3px solid #e2e8f0;
-  border-top-color: #ff6b35;
+  border-top-color: #1e3a8a;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

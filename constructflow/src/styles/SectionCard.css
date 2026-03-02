@@ -7,8 +7,8 @@
 }
 
 .section-card:hover {
-  border-color: #ff6b35;
-  box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+  border-color: #1e3a8a;
+  box-shadow: 0 2px 8px rgba(30, 58, 138, 0.2);
 }
 
 .section-header {
@@ -72,5 +72,5 @@
 
 .btn-icon:hover {
   background: #f3f4f6;
-  color: #ff6b35;
+  color: #1e3a8a;
 }

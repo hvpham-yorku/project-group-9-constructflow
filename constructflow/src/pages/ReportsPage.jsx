@@ -1,12 +1,10 @@
 /**
- * ReportsPage.jsx
+ * ReportsPage is temporarily disabled.
  *
- * Analytics and reporting page providing insights into project performance and statistics.
- * Displays key metrics like total projects, completion rates, average project duration,
- * and worker utilization. Managers can generate and download various reports including
- * monthly summaries, worker performance reports, and budget analyses.
+ * Original implementation is preserved below as commented code.
  */
 
+/*
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { MdBarChart, MdTrendingUp, MdAttachMoney } from "react-icons/md";
@@ -88,6 +86,13 @@ function ReportsPage() {
       </div>
     </div>
   );
+}
+
+export default ReportsPage;
+*/
+
+function ReportsPage() {
+  return null;
 }
 
 export default ReportsPage;

@@ -2,7 +2,7 @@
  * Sidebar.jsx
  *
  * Role-aware navigation sidebar.
- *   Manager  — Dashboard, Projects, Workers, Reports, Settings
+ *   Manager  — Dashboard, Projects, Workers, Settings
  *   Worker   — Dashboard, Projects, Settings
  *
  * Projects link goes to /projects (list); individual blueprints are accessed
@@ -15,7 +15,7 @@ import {
   MdDashboard,
   MdFolder,
   MdPeople,
-  MdBarChart,
+  // MdBarChart,
   MdSettings,
   MdLogout,
   MdBusiness,
@@ -26,7 +26,7 @@ const MANAGER_LINKS = [
   { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
   { name: "Projects", icon: MdFolder, path: "/projects" },
   { name: "Workers", icon: MdPeople, path: "/workers" },
-  { name: "Reports", icon: MdBarChart, path: "/reports" },
+  // { name: "Reports", icon: MdBarChart, path: "/reports" },
   { name: "Settings", icon: MdSettings, path: "/settings" },
 ];
 
@@ -38,7 +38,6 @@ const WORKER_LINKS = [
 
 const ROLE_LABELS = {
   manager: "Manager",
-  carpenter: "Carpenter",
   electrician: "Electrician",
   plumber: "Plumber",
   general: "General",

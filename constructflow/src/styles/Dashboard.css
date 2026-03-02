@@ -70,7 +70,7 @@
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 4px;
-  color: #ff6b35;
+  color: #fff;
   cursor: pointer;
   user-select: none;
   transition: opacity 0.2s;
@@ -121,11 +121,11 @@
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: #ff6b35;
+  color: #1e3a8a;
   flex-shrink: 0;
   width: 48px;
   height: 48px;
-  background: rgba(255, 107, 53, 0.08);
+  background: rgba(30, 58, 138, 0.08);
   border-radius: 12px;
 }
 
@@ -192,8 +192,8 @@
 }
 
 .recent-project-row:hover {
-  border-color: #ff6b35;
-  background: #fff8f5;
+  border-color: #1e3a8a;
+  background: #eff6ff;
   transform: translateX(4px);
 }
 
@@ -220,7 +220,7 @@
   transition: color 0.15s;
 }
 
-.recent-project-row:hover .rp-arrow { color: #ff6b35; }
+.recent-project-row:hover .rp-arrow { color: #1e3a8a; }
 
 /* ── Loading rows ───────────────────────────────────────────────── */
 .loading-rows {
@@ -277,10 +277,10 @@
 }
 
 .action-btn:hover {
-  border-color: #ff6b35;
-  color: #ff6b35;
+  border-color: #1e3a8a;
+  color: #1e3a8a;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.15);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.15);
 }
 
 .action-icon {
@@ -288,13 +288,13 @@
   align-items: center;
   justify-content: center;
   font-size: 26px;
-  color: #ff6b35;
+  color: #1e3a8a;
 }
 
 /* ── Buttons ────────────────────────────────────────────────────── */
 .btn-primary {
   padding: 10px 22px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 9px;
@@ -306,7 +306,7 @@
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3);
 }
 
 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -314,8 +314,8 @@
 .btn-secondary {
   padding: 8px 18px;
   background: #fff;
-  color: #ff6b35;
-  border: 2px solid #ff6b35;
+  color: #1e3a8a;
+  border: 2px solid #1e3a8a;
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
@@ -323,13 +323,13 @@
   transition: all 0.2s;
 }
 
-.btn-secondary:hover { background: #ff6b35; color: #fff; }
+.btn-secondary:hover { background: #1e3a8a; color: #fff; }
 
 /* ── Link button ────────────────────────────────────────────────── */
 .link-btn {
   background: none;
   border: none;
-  color: #ff6b35;
+  color: #1e3a8a;
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -375,7 +375,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
 }
 
 /* ── Workers grid ───────────────────────────────────────────────── */
@@ -409,7 +409,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
   color: #fff;
   display: flex;
   align-items: center;
@@ -458,72 +458,71 @@
 .status-badge.on-leave  { background: #fef9c3; color: #b45309; }
 .status-badge.inactive  { background: #f1f5f9; color: #64748b; }
 
-/* ── Reports ────────────────────────────────────────────────────── */
-.reports-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+/*
+  Reports section styles are temporarily disabled.
+  Keep this block commented until the Reports feature is reintroduced.
 
-.report-item {
-  background: #fff;
-  padding: 20px;
-  border-radius: 14px;
-  border: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
+  .reports-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
 
-.report-item:hover {
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
-}
+  .report-item {
+    background: #fff;
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
 
-.report-icon {
-  font-size: 32px;
-  width: 52px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8fafc;
-  border-radius: 12px;
-  flex-shrink: 0;
-}
+  .report-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+  }
 
-.stat-change {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 4px;
-  display: block;
-}
+  .report-icon {
+    font-size: 32px;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8fafc;
+    border-radius: 12px;
+    flex-shrink: 0;
+  }
 
-.stat-change.positive { color: #16a34a; }
-.stat-change.negative { color: #dc2626; }
+  .stat-change {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+    display: block;
+  }
 
-  justify-content: center;
-  background: #f7fafc;
-  border-radius: 8px;
-}
+  .stat-change.positive { color: #16a34a; }
+  .stat-change.negative { color: #dc2626; }
 
-.report-info {
-  flex: 1;
-}
+  .report-info {
+    flex: 1;
+  }
 
-.report-info h4 {
-  font-size: 16px;
-  color: #1f2937;
-  margin: 0 0 4px 0;
-  font-weight: 600;
-}
+  .report-info h4 {
+    font-size: 16px;
+    color: #1f2937;
+    margin: 0 0 4px 0;
+    font-weight: 600;
+  }
 
-.report-info p {
-  font-size: 13px;
-  color: #6b7280;
-  margin: 0;
-}
+  .report-info p {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+  }
+*/
 
 /* Settings Page Styles */
 .settings-group {
@@ -600,7 +599,7 @@
 }
 
 .toggle input:checked + .toggle-slider {
-  background-color: #ff6b35;
+  background-color: #1e3a8a;
 }
 
 .toggle input:checked + .toggle-slider:before {
@@ -619,7 +618,7 @@
 
 .setting-select:focus {
   outline: none;
-  border-color: #ff6b35;
+  border-color: #1e3a8a;
 }
 
 .btn-danger {
@@ -642,7 +641,7 @@
 
 .btn-primary {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -656,5 +655,5 @@
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 20px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 10px 20px rgba(30, 58, 138, 0.3);
 }
