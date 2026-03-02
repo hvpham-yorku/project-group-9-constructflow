@@ -15,6 +15,10 @@ Customer meeting’s summary video: https://youtu.be/ytbclsm6Geg [![YouTube](htt
 Change made:  
 Blueprint is used as a helper for the tasks assigned, rather than it serving as the main workspace. Our customer suggested using the blueprint feature as an addition to assigning tasks to promote better organization and clarity. Having the blueprint as the main workspace would cause confusion for the workers.
 
+### Delivery 1
+
+[Peer evaluation form](deliverables/EECS2311Z-Delivery1-PeerReview-Group9.pdf) is in the `deliverables` folder.  
+
 ---
 
 # ConstructFlow

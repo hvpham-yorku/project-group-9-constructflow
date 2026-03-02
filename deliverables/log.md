@@ -38,3 +38,10 @@ Meeting lasted **16 minutes**.
 Meeting lasted **1 hour**.
 - Discussed the current state of the project, and decided on some fixes
 - Login/Signup UI changes
+
+### Mar 1, 2026
+
+Meeting lasted **1 hour**.
+- Made final changes to the project for presentation
+- Worked on the presentation slides
+- Worked on the peer review form
