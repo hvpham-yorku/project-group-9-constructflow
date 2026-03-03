@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1f2e 0%, #2d3561 100%);
+  background: #1a1f2e;
   padding: 24px;
 }
 
@@ -153,7 +153,7 @@
 .btn-org-primary {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: #fff;
   border: none;
   border-radius: 10px;

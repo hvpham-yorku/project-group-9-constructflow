@@ -1,6 +1,6 @@
 .sidebar {
   width: 230px;
-  background: linear-gradient(180deg, #1a1f2e 0%, #2d3561 100%);
+  background: #1a1f2e;
   display: flex;
   flex-direction: column;
   box-shadow: 2px 0 16px rgba(0, 0, 0, 0.25);
@@ -133,7 +133,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  background: #1e3a8a;
   display: flex;
   align-items: center;
   justify-content: center;

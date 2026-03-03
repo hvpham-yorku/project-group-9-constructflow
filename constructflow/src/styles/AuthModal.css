@@ -65,7 +65,7 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   border-radius: 14px;
   margin: 0 auto 16px;
   font-size: 28px;
@@ -132,7 +132,7 @@
 .btn-primary {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;

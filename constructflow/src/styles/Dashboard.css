@@ -22,7 +22,7 @@
 
 /* ── Welcome banner ─────────────────────────────────────────────── */
 .welcome-banner {
-  background: linear-gradient(135deg, #1a1f2e 0%, #2d3561 100%);
+  background: #1a1f2e;
   border-radius: 16px;
   padding: 24px 28px;
   margin-bottom: 28px;
@@ -232,7 +232,7 @@
 .loading-row {
   height: 52px;
   border-radius: 12px;
-  background: linear-gradient(90deg, #f0f4f8 25%, #e2e8f0 50%, #f0f4f8 75%);
+  background: #e2e8f0;
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
 }
@@ -294,7 +294,7 @@
 /* ── Buttons ────────────────────────────────────────────────────── */
 .btn-primary {
   padding: 10px 22px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 9px;
@@ -375,7 +375,7 @@
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
 }
 
 /* ── Workers grid ───────────────────────────────────────────────── */
@@ -409,7 +409,7 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+  background: #1e3a8a;
   color: #fff;
   display: flex;
   align-items: center;
@@ -641,7 +641,7 @@
 
 .btn-primary {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;
