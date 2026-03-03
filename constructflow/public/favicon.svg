@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="12" fill="#1a1f2e"/>
+  <path d="M14 52V18C14 16.8954 14.8954 16 16 16H30C31.1046 16 32 16.8954 32 18V52" fill="white"/>
+  <path d="M32 52V24C32 22.8954 32.8954 22 34 22H48C49.1046 22 50 22.8954 50 24V52" fill="white"/>
+  <rect x="20" y="22" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="26" y="22" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="20" y="29" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="26" y="29" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="20" y="36" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="26" y="36" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="38" y="28" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="44" y="28" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="38" y="35" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="44" y="35" width="4" height="4" rx="1" fill="#1a1f2e"/>
+  <rect x="29" y="44" width="6" height="8" rx="1" fill="#1a1f2e"/>
+</svg>
