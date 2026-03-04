@@ -6,6 +6,9 @@
   justify-content: center;
   background: #1a1f2e;
   padding: 24px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 /* Subtle grid overlay */
@@ -13,9 +16,47 @@
   content: "";
   position: fixed;
   inset: 0;
-  background-image: none;
-  background-size: 40px 40px;
+  background-color: #1a1f2e;
+  background-image:
+    linear-gradient(rgba(120, 141, 201, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 141, 201, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(120, 141, 201, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 141, 201, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(30, 58, 138, 0.28), transparent 62%);
+  background-size:
+    48px 48px,
+    48px 48px,
+    12px 12px,
+    12px 12px,
+    100% 100%;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    center;
+  animation: blueprintDrift 55s linear infinite;
+  z-index: 0;
   pointer-events: none;
+}
+
+@keyframes blueprintDrift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      center;
+  }
+  to {
+    background-position:
+      96px 96px,
+      96px 96px,
+      96px 96px,
+      96px 96px,
+      center;
+  }
 }
 
 /* ─── Card ───────────────────────────────────────────────────── */
@@ -27,6 +68,7 @@
   width: 100%;
   max-width: 460px;
   position: relative;
+  z-index: 1;
   animation: loginCardIn 0.4s ease;
 }
 
