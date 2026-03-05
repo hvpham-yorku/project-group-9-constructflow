@@ -153,6 +153,91 @@
   line-height: 1.3;
 }
 
+.org-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.org-name-edit-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.org-name-edit-btn:hover {
+  color: #1e3a8a;
+  border-color: #1e3a8a;
+}
+
+.org-name-edit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.org-name-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a202c;
+  min-width: 200px;
+}
+
+.org-name-input:focus {
+  outline: none;
+  border-color: #1e3a8a;
+  box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.12);
+}
+
+.org-name-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.org-name-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.org-name-btn.save {
+  color: #16a34a;
+  border-color: #86efac;
+}
+
+.org-name-btn.cancel {
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.org-name-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.org-name-error {
+  font-size: 12px;
+  color: #dc2626;
+}
+
 /* ── Section ────────────────────────────────────────────────────── */
 .section {
   margin-bottom: 28px;

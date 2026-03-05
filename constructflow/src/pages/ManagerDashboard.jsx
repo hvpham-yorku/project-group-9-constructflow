@@ -12,6 +12,9 @@ import {
   MdEngineering,
   MdConstruction,
   MdArrowForward,
+  MdEdit,
+  MdCheck,
+  MdClose,
 } from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -23,6 +26,7 @@ import {
   where,
   doc,
   getDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/Dashboard.css";
@@ -40,6 +44,10 @@ export default function ManagerDashboard() {
   const [recentProjects, setRecentProjects] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showCode, setShowCode] = useState(false);
+  const [editingOrgName, setEditingOrgName] = useState(false);
+  const [orgNameValue, setOrgNameValue] = useState("");
+  const [savingOrgName, setSavingOrgName] = useState(false);
+  const [orgNameError, setOrgNameError] = useState("");
 
   useEffect(() => {
     if (!organizationId) return;
@@ -83,6 +91,32 @@ export default function ManagerDashboard() {
     };
     load();
   }, [organizationId]);
+
+  useEffect(() => {
+    setOrgNameValue(orgData?.name || "");
+  }, [orgData?.name]);
+
+  const handleSaveOrgName = async () => {
+    const nextName = orgNameValue.trim();
+    if (!nextName) {
+      setOrgNameError("Organisation name cannot be empty.");
+      return;
+    }
+    if (!organizationId) return;
+
+    setSavingOrgName(true);
+    setOrgNameError("");
+    try {
+      await updateDoc(doc(db, "organizations", organizationId), {
+        name: nextName,
+      });
+      setOrgData((prev) => ({ ...(prev || {}), name: nextName }));
+      setEditingOrgName(false);
+    } catch (err) {
+      setOrgNameError(err.message || "Failed to update organisation name.");
+    }
+    setSavingOrgName(false);
+  };
 
   const STATUS_COLORS = {
     active: { bg: "#dcfce7", fg: "#16a34a" },
@@ -158,7 +192,65 @@ export default function ManagerDashboard() {
               </div>
               <div>
                 <p className="stat-label">Organisation</p>
-                <p className="stat-org-name">{orgData?.name || "—"}</p>
+                {editingOrgName ? (
+                  <div className="org-name-edit-wrap">
+                    <input
+                      className="org-name-input"
+                      value={orgNameValue}
+                      onChange={(e) => setOrgNameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleSaveOrgName();
+                        if (e.key === "Escape") {
+                          setEditingOrgName(false);
+                          setOrgNameValue(orgData?.name || "");
+                          setOrgNameError("");
+                        }
+                      }}
+                      disabled={savingOrgName}
+                      autoFocus
+                    />
+                    <div className="org-name-actions">
+                      <button
+                        className="org-name-btn save"
+                        onClick={handleSaveOrgName}
+                        disabled={savingOrgName}
+                        title="Save organisation name"
+                      >
+                        <MdCheck />
+                      </button>
+                      <button
+                        className="org-name-btn cancel"
+                        onClick={() => {
+                          setEditingOrgName(false);
+                          setOrgNameValue(orgData?.name || "");
+                          setOrgNameError("");
+                        }}
+                        disabled={savingOrgName}
+                        title="Cancel"
+                      >
+                        <MdClose />
+                      </button>
+                    </div>
+                    {orgNameError && (
+                      <span className="org-name-error">{orgNameError}</span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="org-name-row">
+                    <p className="stat-org-name">{orgData?.name || "—"}</p>
+                    <button
+                      className="org-name-edit-btn"
+                      onClick={() => {
+                        setEditingOrgName(true);
+                        setOrgNameValue(orgData?.name || "");
+                        setOrgNameError("");
+                      }}
+                      title="Edit organisation name"
+                    >
+                      <MdEdit />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
