@@ -21,7 +21,13 @@ Blueprint is used as a helper for the tasks assigned, rather than it serving as 
 
 ### ITR2
 
-Updated user stories: [ITR2-user-stories](deliverables/ITR2-user-stories.pdf)
+Updated user stories: [ITR2-user-stories](deliverables/ITR2-user-stories.pdf)   
+
+#### UML Class Diagram
+
+The UML class diagram was created using [Plant UML](https://plantuml.com/).  
+Here is the code: [uml-class-diagram.puml](deliverables/uml-class-diagram.puml).  
+Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).  
 
 ---
 
