@@ -31,6 +31,14 @@ import {
 import { db } from "../firebase";
 import "../styles/Dashboard.css";
 
+const getEffectiveProjectStatus = (project) => {
+  const completion = Number(project?.completion);
+  if (Number.isFinite(completion) && completion >= 100) {
+    return "completed";
+  }
+  return project?.status || "active";
+};
+
 export default function ManagerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
@@ -287,7 +295,7 @@ export default function ManagerDashboard() {
             ) : (
               <div className="recent-projects-list">
                 {recentProjects.map((p) => {
-                  const status = p.status || "active";
+                  const status = getEffectiveProjectStatus(p);
                   const sc = STATUS_COLORS[status] || STATUS_COLORS.active;
                   return (
                     <div
