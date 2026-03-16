@@ -135,6 +135,44 @@
 
 .task-actions {
   margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.task-progress {
+  min-width: 220px;
+  flex: 1;
+}
+
+.task-progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.task-progress-copy strong {
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.task-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #dbe4f0;
+  overflow: hidden;
+}
+
+.task-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1e3a8a;
+  transition: width 0.25s ease;
 }
 
 .tasks-empty {
@@ -157,5 +195,9 @@
 
   .task-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .task-progress {
+    min-width: 100%;
   }
 }

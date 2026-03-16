@@ -13,6 +13,7 @@
  *  8.  Manager creates a task with a description assigned to a worker
  *  9.  Task form validates that all required fields are present
  * 10.  Worker sees their assigned tasks on the dashboard
+ * 11.  Task progress averages completion across all task blueprints
  */
 
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
@@ -84,15 +85,15 @@ import { useAuth } from "../contexts/AuthContext";
 vi.mock("../firebase", () => ({ auth: {}, db: {} }));
 
 vi.mock("firebase/firestore", () => ({
-  collection: vi.fn(() => "col-ref"),
+  collection: vi.fn((database, name) => ({ kind: "collection", database, name })),
   addDoc: vi.fn(),
   getDocs: vi.fn(),
   getDoc: vi.fn(),
   deleteDoc: vi.fn(),
   doc: vi.fn(() => "doc-ref"),
   updateDoc: vi.fn(() => Promise.resolve()),
-  query: vi.fn(() => "query-ref"),
-  where: vi.fn(() => "where-clause"),
+  query: vi.fn((ref, ...clauses) => ({ kind: "query", ref, clauses })),
+  where: vi.fn((field, op, value) => ({ kind: "where", field, op, value })),
   serverTimestamp: vi.fn(() => new Date()),
   deleteField: vi.fn(),
 }));
@@ -195,6 +196,9 @@ describe("ConstructFlow End-to-End Workflow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
+  const getCollectionName = (queryRef) =>
+    queryRef?.ref?.name || queryRef?.name || null;
 
   // ── Test 1 ── Manager signs up ─────────────────────────────────────────
   it("1. Manager can sign up with their full name, email, and password", async () => {
@@ -442,14 +446,19 @@ describe("ConstructFlow End-to-End Workflow", () => {
       .mockResolvedValueOnce(projectSnap)
       .mockResolvedValueOnce(projectSnap);
 
-    // getDocs call order:
-    //  loadWorkers()         → getDocs(users)  [fires FIRST: loadProjectAndTasks awaits getDoc before its own getDocs]
-    //  loadProjectAndTasks() → getDocs(tasks)  [fires SECOND]
-    //  loadProjectAndTasks() → getDocs(tasks)  [fires again after task creation]
-    firestoreModule.getDocs
-      .mockResolvedValueOnce(makeSnap([workerSnap])) // workers (1st getDocs call)
-      .mockResolvedValueOnce(makeSnap([])) // tasks – initial load
-      .mockResolvedValueOnce(makeSnap([])); // tasks – reload after creation
+    firestoreModule.getDocs.mockImplementation((queryRef) => {
+      const collectionName = getCollectionName(queryRef);
+      if (collectionName === "users") {
+        return Promise.resolve(makeSnap([workerSnap]));
+      }
+      if (collectionName === "tasks") {
+        return Promise.resolve(makeSnap([]));
+      }
+      if (collectionName === "blueprints") {
+        return Promise.resolve(makeSnap([]));
+      }
+      return Promise.resolve(makeSnap([]));
+    });
 
     firestoreModule.addDoc.mockResolvedValueOnce({ id: "task-1" });
 
@@ -510,10 +519,19 @@ describe("ConstructFlow End-to-End Workflow", () => {
     });
 
     firestoreModule.getDoc.mockResolvedValueOnce(projectSnap);
-    // Same getDocs order as test 8: workers fires before tasks
-    firestoreModule.getDocs
-      .mockResolvedValueOnce(makeSnap([workerSnap])) // workers (1st getDocs)
-      .mockResolvedValueOnce(makeSnap([])); // tasks (2nd getDocs)
+    firestoreModule.getDocs.mockImplementation((queryRef) => {
+      const collectionName = getCollectionName(queryRef);
+      if (collectionName === "users") {
+        return Promise.resolve(makeSnap([workerSnap]));
+      }
+      if (collectionName === "tasks") {
+        return Promise.resolve(makeSnap([]));
+      }
+      if (collectionName === "blueprints") {
+        return Promise.resolve(makeSnap([]));
+      }
+      return Promise.resolve(makeSnap([]));
+    });
 
     const { container } = render(<TasksPage />);
 
@@ -547,37 +565,45 @@ describe("ConstructFlow End-to-End Workflow", () => {
   it("10. Worker sees their assigned tasks listed on the Worker Dashboard", async () => {
     useAuth.mockReturnValue(WORKER);
 
-    // getDocs sequence: projects first, then tasks assigned to wkr-1
-    firestoreModule.getDocs
-      .mockResolvedValueOnce(
-        makeSnap([
-          makeDocSnap("proj-1", {
-            name: "Riverside Tower",
-            status: "active",
-            organizationId: "org-1",
-          }),
-        ]),
-      )
-      .mockResolvedValueOnce(
-        makeSnap([
-          makeDocSnap("task-1", {
-            title: "Fix Pipes Floor 2",
-            dueDate: "2026-04-20",
-            projectId: "proj-1",
-            completed: false,
-            assignedWorkerId: "wkr-1",
-            organizationId: "org-1",
-          }),
-          makeDocSnap("task-2", {
-            title: "Install Valve Room 3",
-            dueDate: "2026-04-25",
-            projectId: "proj-1",
-            completed: true,
-            assignedWorkerId: "wkr-1",
-            organizationId: "org-1",
-          }),
-        ]),
-      );
+    firestoreModule.getDocs.mockImplementation((queryRef) => {
+      const collectionName = getCollectionName(queryRef);
+      if (collectionName === "projects") {
+        return Promise.resolve(
+          makeSnap([
+            makeDocSnap("proj-1", {
+              name: "Riverside Tower",
+              status: "active",
+              organizationId: "org-1",
+            }),
+          ]),
+        );
+      }
+
+      if (collectionName === "tasks") {
+        return Promise.resolve(
+          makeSnap([
+            makeDocSnap("task-1", {
+              title: "Fix Pipes Floor 2",
+              dueDate: "2026-04-20",
+              projectId: "proj-1",
+              completed: false,
+              assignedWorkerId: "wkr-1",
+              organizationId: "org-1",
+            }),
+            makeDocSnap("task-2", {
+              title: "Install Valve Room 3",
+              dueDate: "2026-04-25",
+              projectId: "proj-1",
+              completed: true,
+              assignedWorkerId: "wkr-1",
+              organizationId: "org-1",
+            }),
+          ]),
+        );
+      }
+
+      return Promise.resolve(makeSnap([]));
+    });
 
     render(<WorkerDashboard />);
 
@@ -591,5 +617,82 @@ describe("ConstructFlow End-to-End Workflow", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
     // The pending task shows "Pending" — appears in both the stat card and the task row
     expect(screen.getAllByText("Pending").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("11. Task progress averages completion across all blueprints linked to the task", async () => {
+    useAuth.mockReturnValue(MANAGER);
+
+    const projectSnap = makeDocSnap("proj-1", {
+      name: "Riverside Tower",
+      status: "active",
+      organizationId: "org-1",
+    });
+    const workerSnap = makeDocSnap("wkr-1", {
+      name: "Bob Plumber",
+      email: "bob@test.com",
+      role: "plumber",
+      organizationId: "org-1",
+    });
+
+    firestoreModule.getDoc.mockResolvedValueOnce(projectSnap);
+    firestoreModule.getDocs.mockImplementation((queryRef) => {
+      const collectionName = getCollectionName(queryRef);
+      if (collectionName === "users") {
+        return Promise.resolve(makeSnap([workerSnap]));
+      }
+      if (collectionName === "tasks") {
+        return Promise.resolve(
+          makeSnap([
+            makeDocSnap("task-1", {
+              title: "Hello",
+              description: "Main washroom rough-in",
+              dueDate: "2026-03-19",
+              assignedWorkerId: "wkr-1",
+              assignedWorkerName: "Bob Plumber",
+              projectId: "proj-1",
+            }),
+          ]),
+        );
+      }
+      if (collectionName === "blueprints") {
+        return Promise.resolve(
+          makeSnap([
+            makeDocSnap("bp-1", {
+              taskId: "task-1",
+              projectId: "proj-1",
+              objects: {
+                pipeA: { completed: true, pointTasks: [] },
+                pipeB: { completed: false, pointTasks: [] },
+              },
+            }),
+            makeDocSnap("bp-2", {
+              taskId: "task-1",
+              projectId: "proj-1",
+              objects: {
+                fixturePipe: {
+                  completed: false,
+                  pointTasks: [
+                    { requiredType: "valve", completed: true },
+                    { requiredType: "join_2_way", completed: false },
+                  ],
+                },
+              },
+            }),
+          ]),
+        );
+      }
+      return Promise.resolve(makeSnap([]));
+    });
+
+    render(<TasksPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Hello")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("50%")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Task progress 50%"),
+    ).toBeInTheDocument();
   });
 });
