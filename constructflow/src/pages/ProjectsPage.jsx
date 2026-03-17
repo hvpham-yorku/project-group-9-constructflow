@@ -73,6 +73,15 @@ const getTaskCompletion = (taskId, blueprints) => {
   return Math.round(totalPercentage / taskBlueprints.length);
 };
 
+const getProjectCompletion = (projectTasks = [], blueprints = []) => {
+  if (projectTasks.length === 0) return 0;
+  const totalTaskCompletion = projectTasks.reduce(
+    (sum, task) => sum + getTaskCompletion(task.id, blueprints),
+    0,
+  );
+  return Math.round(totalTaskCompletion / projectTasks.length);
+};
+
 const getEffectiveProjectStatus = (project) => {
   const completion = Number(project?.completion);
   if (Number.isFinite(completion) && completion >= 100) {
@@ -149,14 +158,14 @@ export default function ProjectsPage() {
 
       const withAutoStatus = list.map((project) => {
         const projectTasks = tasksByProjectId.get(project.id) || [];
+        const completion = getProjectCompletion(projectTasks, allOrgBlueprints);
         const allTasksCompleted =
           projectTasks.length > 0 &&
-          projectTasks.every(
-            (task) => getTaskCompletion(task.id, allOrgBlueprints) >= 100,
-          );
+          projectTasks.every((task) => getTaskCompletion(task.id, allOrgBlueprints) >= 100);
 
         return {
           ...project,
+          completion,
           status: allTasksCompleted ? "completed" : "active",
           _storedStatus: project.status || "active",
         };
@@ -318,6 +327,20 @@ export default function ProjectsPage() {
                     {project.description && (
                       <p className="project-card-desc">{project.description}</p>
                     )}
+
+                    <div className="project-progress" aria-label={`Project progress ${project.completion || 0}%`}>
+                      <div className="project-progress-copy">
+                        <span>Progress</span>
+                        <strong>{project.completion || 0}%</strong>
+                      </div>
+                      <div className="project-progress-bar" aria-hidden="true">
+                        <div
+                          className="project-progress-fill"
+                          style={{ width: `${project.completion || 0}%` }}
+                        />
+                      </div>
+                    </div>
+
                     <div className="project-card-footer">
                       <span className="project-card-date">
                         {project.createdAt?.toDate

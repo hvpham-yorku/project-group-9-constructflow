@@ -122,6 +122,39 @@
   -webkit-box-orient: vertical;
 }
 
+.project-progress {
+  margin-top: 2px;
+}
+
+.project-progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.project-progress-copy strong {
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.project-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #dbe4f0;
+  overflow: hidden;
+}
+
+.project-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1e3a8a;
+  transition: width 0.25s ease;
+}
+
 .project-card-footer {
   display: flex;
   justify-content: space-between;
