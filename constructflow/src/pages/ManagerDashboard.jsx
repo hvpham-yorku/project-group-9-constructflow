@@ -76,6 +76,12 @@ function toEndOfDay(dateInput) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isBeforeToday(date) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return date.getTime() < today.getTime();
+}
+
 export default function ManagerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
@@ -178,6 +184,10 @@ export default function ManagerDashboard() {
       setInviteFeedback("Please select a valid expiry date.");
       return;
     }
+    if (isBeforeToday(nextExpiry)) {
+      setInviteFeedback("Expiry date cannot be in the past.");
+      return;
+    }
 
     setSavingInviteExpiry(true);
     setInviteFeedback("");
@@ -199,7 +209,14 @@ export default function ManagerDashboard() {
 
   const handleGenerateInviteCode = async () => {
     if (!organizationId) return;
-    const nextExpiry = toEndOfDay(inviteExpiryInput) || addDays(new Date(), 7);
+    const fallbackExpiry = addDays(new Date(), 7);
+    const parsedExpiry = toEndOfDay(inviteExpiryInput);
+    const nextExpiry = parsedExpiry || fallbackExpiry;
+
+    if (isBeforeToday(nextExpiry)) {
+      setInviteFeedback("Expiry date cannot be in the past.");
+      return;
+    }
 
     setGeneratingInviteCode(true);
     setInviteFeedback("");
@@ -280,6 +297,7 @@ export default function ManagerDashboard() {
                   type="date"
                   className="invite-expiry-input"
                   value={inviteExpiryInput}
+                  min={toDateInputValue(new Date())}
                   onChange={(e) => setInviteExpiryInput(e.target.value)}
                 />
                 <button
