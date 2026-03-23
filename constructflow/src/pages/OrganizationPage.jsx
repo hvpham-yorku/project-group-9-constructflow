@@ -26,6 +26,7 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/OrganizationPage.css";
@@ -37,6 +38,19 @@ function generateCode(len = 6) {
   for (let i = 0; i < len; i++)
     code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 const WORKER_TYPES = [
@@ -84,11 +98,13 @@ export default function OrganizationPage() {
     setCreateLoading(true);
     try {
       const inviteCode = generateCode();
+      const inviteCodeExpiresAt = Timestamp.fromDate(addDays(new Date(), 7));
       const orgRef = await addDoc(collection(db, "organizations"), {
         name: orgName.trim(),
         managerId: currentUser.uid,
         managerName: userProfile?.name || "",
         inviteCode,
+        inviteCodeExpiresAt,
         createdAt: serverTimestamp(),
         members: {
           [currentUser.uid]: {
@@ -122,7 +138,13 @@ export default function OrganizationPage() {
         setCodeError("Invalid invite code. Check with your manager.");
       } else {
         const orgDoc = snap.docs[0];
-        setPendingOrg({ id: orgDoc.id, name: orgDoc.data().name });
+        const org = orgDoc.data();
+        const expiresAt = toDate(org.inviteCodeExpiresAt);
+        if (expiresAt && expiresAt.getTime() < Date.now()) {
+          setCodeError("Invite code has expired. Ask your manager for a new code.");
+        } else {
+          setPendingOrg({ id: orgDoc.id, name: org.name });
+        }
       }
     } catch (err) {
       setCodeError(err.message || "Something went wrong.");

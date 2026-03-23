@@ -91,6 +91,80 @@
 
 .copy-btn:hover { background: rgba(255,255,255,0.2); }
 
+.copy-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.invite-manage-panel {
+  margin-top: -12px;
+  margin-bottom: 24px;
+  background: #2a3560;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: #e2e8f0;
+  max-width: 680px;
+}
+
+.invite-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.invite-manage-row + .invite-manage-row {
+  margin-top: 8px;
+}
+
+.invite-mini-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.invite-manage-code {
+  font-family: 'Courier New', monospace;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffffff;
+}
+
+.invite-expiry-input {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.25);
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.invite-action-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-width: 1px;
+}
+
+.invite-expiry-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
+.invite-expiry-note.expired {
+  color: #fecaca;
+}
+
+.invite-feedback {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #bfdbfe;
+}
+
 /* ── Stats ──────────────────────────────────────────────────────── */
 .dashboard-stats {
   display: grid;

@@ -27,6 +27,7 @@ import {
   doc,
   getDoc,
   updateDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/Dashboard.css";
@@ -38,6 +39,42 @@ const getEffectiveProjectStatus = (project) => {
   }
   return project?.status || "active";
 };
+
+function generateInviteCode(len = 6) {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < len; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toDateInputValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function toEndOfDay(dateInput) {
+  if (!dateInput) return null;
+  const date = new Date(`${dateInput}T23:59:59.999`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
 
 export default function ManagerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
@@ -56,6 +93,10 @@ export default function ManagerDashboard() {
   const [orgNameValue, setOrgNameValue] = useState("");
   const [savingOrgName, setSavingOrgName] = useState(false);
   const [orgNameError, setOrgNameError] = useState("");
+  const [inviteExpiryInput, setInviteExpiryInput] = useState("");
+  const [savingInviteExpiry, setSavingInviteExpiry] = useState(false);
+  const [generatingInviteCode, setGeneratingInviteCode] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState("");
 
   useEffect(() => {
     if (!organizationId) return;
@@ -102,6 +143,10 @@ export default function ManagerDashboard() {
 
   useEffect(() => {
     setOrgNameValue(orgData?.name || "");
+    const currentExpiry = toDate(orgData?.inviteCodeExpiresAt);
+    setInviteExpiryInput(
+      toDateInputValue(currentExpiry || addDays(new Date(), 7)),
+    );
   }, [orgData?.name]);
 
   const handleSaveOrgName = async () => {
@@ -125,6 +170,62 @@ export default function ManagerDashboard() {
     }
     setSavingOrgName(false);
   };
+
+  const handleSaveInviteExpiry = async () => {
+    if (!organizationId) return;
+    const nextExpiry = toEndOfDay(inviteExpiryInput);
+    if (!nextExpiry) {
+      setInviteFeedback("Please select a valid expiry date.");
+      return;
+    }
+
+    setSavingInviteExpiry(true);
+    setInviteFeedback("");
+    try {
+      const expiryTimestamp = Timestamp.fromDate(nextExpiry);
+      await updateDoc(doc(db, "organizations", organizationId), {
+        inviteCodeExpiresAt: expiryTimestamp,
+      });
+      setOrgData((prev) => ({
+        ...(prev || {}),
+        inviteCodeExpiresAt: expiryTimestamp,
+      }));
+      setInviteFeedback(`Expires on ${nextExpiry.toLocaleDateString()}.`);
+    } catch (err) {
+      setInviteFeedback(err.message || "Failed to save expiry.");
+    }
+    setSavingInviteExpiry(false);
+  };
+
+  const handleGenerateInviteCode = async () => {
+    if (!organizationId) return;
+    const nextExpiry = toEndOfDay(inviteExpiryInput) || addDays(new Date(), 7);
+
+    setGeneratingInviteCode(true);
+    setInviteFeedback("");
+    try {
+      const nextCode = generateInviteCode();
+      const expiryTimestamp = Timestamp.fromDate(nextExpiry);
+      await updateDoc(doc(db, "organizations", organizationId), {
+        inviteCode: nextCode,
+        inviteCodeExpiresAt: expiryTimestamp,
+      });
+      setOrgData((prev) => ({
+        ...(prev || {}),
+        inviteCode: nextCode,
+        inviteCodeExpiresAt: expiryTimestamp,
+      }));
+      setShowCode(true);
+      setInviteFeedback("New invite code generated. Previous code is now invalid.");
+    } catch (err) {
+      setInviteFeedback(err.message || "Failed to generate a new invite code.");
+    }
+    setGeneratingInviteCode(false);
+  };
+
+  const inviteExpiryDate = toDate(orgData?.inviteCodeExpiresAt);
+  const inviteIsExpired =
+    inviteExpiryDate instanceof Date && inviteExpiryDate.getTime() < Date.now();
 
   const STATUS_COLORS = {
     active: { bg: "#dcfce7", fg: "#16a34a" },
@@ -168,6 +269,59 @@ export default function ManagerDashboard() {
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="invite-manage-panel">
+            <div className="invite-manage-row">
+              <span className="invite-mini-label">Invite Code</span>
+              <span className="invite-manage-code">{orgData?.inviteCode || "—"}</span>
+              <button
+                className="copy-btn"
+                onClick={() => {
+                  if (orgData?.inviteCode) {
+                    navigator.clipboard.writeText(orgData.inviteCode);
+                  }
+                }}
+                disabled={!orgData?.inviteCode}
+                title="Copy to clipboard"
+              >
+                Copy
+              </button>
+            </div>
+
+            <div className="invite-manage-row">
+              <label className="invite-mini-label" htmlFor="invite-expiry-input">
+                Expiry
+              </label>
+              <input
+                id="invite-expiry-input"
+                type="date"
+                className="invite-expiry-input"
+                value={inviteExpiryInput}
+                onChange={(e) => setInviteExpiryInput(e.target.value)}
+              />
+              <button
+                className="btn-secondary invite-action-btn"
+                onClick={handleSaveInviteExpiry}
+                disabled={savingInviteExpiry || generatingInviteCode}
+              >
+                {savingInviteExpiry ? "Saving..." : "Save Expiry"}
+              </button>
+              <button
+                className="btn-secondary invite-action-btn"
+                onClick={handleGenerateInviteCode}
+                disabled={generatingInviteCode || savingInviteExpiry}
+              >
+                {generatingInviteCode ? "Generating..." : "Generate New Code"}
+              </button>
+            </div>
+
+            <p className={`invite-expiry-note${inviteIsExpired ? " expired" : ""}`}>
+              {inviteExpiryDate
+                ? `Expires on ${inviteExpiryDate.toLocaleDateString()}`
+                : "No expiry set"}
+            </p>
+            {inviteFeedback && <p className="invite-feedback">{inviteFeedback}</p>}
           </div>
 
           {/* ── Stats ── */}
