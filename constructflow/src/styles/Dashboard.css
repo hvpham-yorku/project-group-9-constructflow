@@ -57,6 +57,20 @@
   padding: 10px 16px;
 }
 
+.invite-code-box--manager {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 520px;
+}
+
+.invite-code-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
 .invite-label {
   font-size: 12px;
   font-weight: 600;
@@ -96,22 +110,12 @@
   cursor: not-allowed;
 }
 
-.invite-manage-panel {
-  margin-top: -12px;
-  margin-bottom: 24px;
-  background: #2a3560;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 12px;
-  padding: 12px 14px;
-  color: #e2e8f0;
-  max-width: 680px;
-}
-
 .invite-manage-row {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .invite-manage-row + .invite-manage-row {
@@ -143,6 +147,10 @@
   font-size: 13px;
 }
 
+.invite-expiry-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
 .invite-action-btn {
   padding: 6px 12px;
   font-size: 12px;
@@ -163,6 +171,17 @@
   margin: 4px 0 0;
   font-size: 12px;
   color: #bfdbfe;
+}
+
+@media (max-width: 900px) {
+  .invite-code-box--manager {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .invite-code-top {
+    flex-wrap: wrap;
+  }
 }
 
 /* ── Stats ──────────────────────────────────────────────────────── */

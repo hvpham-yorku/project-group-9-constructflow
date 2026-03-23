@@ -147,7 +147,7 @@ export default function ManagerDashboard() {
     setInviteExpiryInput(
       toDateInputValue(currentExpiry || addDays(new Date(), 7)),
     );
-  }, [orgData?.name]);
+  }, [orgData?.name, orgData?.inviteCodeExpiresAt]);
 
   const handleSaveOrgName = async () => {
     const nextName = orgNameValue.trim();
@@ -248,80 +248,63 @@ export default function ManagerDashboard() {
               </h2>
               <p>{orgData?.name || "Your Organisation"}</p>
             </div>
-            <div className="invite-code-box">
-              <span className="invite-label">Invite Code</span>
-              <span
-                className={`invite-code${showCode ? " visible" : ""}`}
-                onClick={() => setShowCode((v) => !v)}
-                title="Click to reveal/hide"
-              >
-                {showCode ? orgData?.inviteCode || "—" : "••••••"}
-              </span>
-              {showCode && orgData?.inviteCode && (
-                <button
-                  className="copy-btn"
-                  onClick={() => {
-                    navigator.clipboard.writeText(orgData.inviteCode);
-                  }}
-                  title="Copy to clipboard"
+            <div className="invite-code-box invite-code-box--manager">
+              <div className="invite-code-top">
+                <span className="invite-label">Invite Code</span>
+                <span
+                  className={`invite-code${showCode ? " visible" : ""}`}
+                  onClick={() => setShowCode((v) => !v)}
+                  title="Click to reveal/hide"
                 >
-                  Copy
+                  {showCode ? orgData?.inviteCode || "—" : "••••••"}
+                </span>
+                {showCode && orgData?.inviteCode && (
+                  <button
+                    className="copy-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(orgData.inviteCode);
+                    }}
+                    title="Copy to clipboard"
+                  >
+                    Copy
+                  </button>
+                )}
+              </div>
+
+              <div className="invite-manage-row">
+                <label className="invite-mini-label" htmlFor="invite-expiry-input">
+                  Expiry
+                </label>
+                <input
+                  id="invite-expiry-input"
+                  type="date"
+                  className="invite-expiry-input"
+                  value={inviteExpiryInput}
+                  onChange={(e) => setInviteExpiryInput(e.target.value)}
+                />
+                <button
+                  className="btn-secondary invite-action-btn"
+                  onClick={handleSaveInviteExpiry}
+                  disabled={savingInviteExpiry || generatingInviteCode}
+                >
+                  {savingInviteExpiry ? "Saving..." : "Save Expiry"}
                 </button>
-              )}
-            </div>
-          </div>
+                <button
+                  className="btn-secondary invite-action-btn"
+                  onClick={handleGenerateInviteCode}
+                  disabled={generatingInviteCode || savingInviteExpiry}
+                >
+                  {generatingInviteCode ? "Generating..." : "Generate New Code"}
+                </button>
+              </div>
 
-          <div className="invite-manage-panel">
-            <div className="invite-manage-row">
-              <span className="invite-mini-label">Invite Code</span>
-              <span className="invite-manage-code">{orgData?.inviteCode || "—"}</span>
-              <button
-                className="copy-btn"
-                onClick={() => {
-                  if (orgData?.inviteCode) {
-                    navigator.clipboard.writeText(orgData.inviteCode);
-                  }
-                }}
-                disabled={!orgData?.inviteCode}
-                title="Copy to clipboard"
-              >
-                Copy
-              </button>
+              <p className={`invite-expiry-note${inviteIsExpired ? " expired" : ""}`}>
+                {inviteExpiryDate
+                  ? `Expires on ${inviteExpiryDate.toLocaleDateString()}`
+                  : "No expiry set"}
+              </p>
+              {inviteFeedback && <p className="invite-feedback">{inviteFeedback}</p>}
             </div>
-
-            <div className="invite-manage-row">
-              <label className="invite-mini-label" htmlFor="invite-expiry-input">
-                Expiry
-              </label>
-              <input
-                id="invite-expiry-input"
-                type="date"
-                className="invite-expiry-input"
-                value={inviteExpiryInput}
-                onChange={(e) => setInviteExpiryInput(e.target.value)}
-              />
-              <button
-                className="btn-secondary invite-action-btn"
-                onClick={handleSaveInviteExpiry}
-                disabled={savingInviteExpiry || generatingInviteCode}
-              >
-                {savingInviteExpiry ? "Saving..." : "Save Expiry"}
-              </button>
-              <button
-                className="btn-secondary invite-action-btn"
-                onClick={handleGenerateInviteCode}
-                disabled={generatingInviteCode || savingInviteExpiry}
-              >
-                {generatingInviteCode ? "Generating..." : "Generate New Code"}
-              </button>
-            </div>
-
-            <p className={`invite-expiry-note${inviteIsExpired ? " expired" : ""}`}>
-              {inviteExpiryDate
-                ? `Expires on ${inviteExpiryDate.toLocaleDateString()}`
-                : "No expiry set"}
-            </p>
-            {inviteFeedback && <p className="invite-feedback">{inviteFeedback}</p>}
           </div>
 
           {/* ── Stats ── */}
