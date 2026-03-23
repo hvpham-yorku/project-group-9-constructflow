@@ -118,6 +118,21 @@
   width: 100%;
 }
 
+.invite-duration-group {
+  display: flex;
+  gap: 8px;
+}
+
+.invite-duration-select {
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.25);
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 13px;
+  min-width: 120px;
+}
+
 .invite-manage-row + .invite-manage-row {
   margin-top: 8px;
 }

@@ -49,12 +49,6 @@ function generateInviteCode(len = 6) {
   return code;
 }
 
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
 function toDate(value) {
   if (!value) return null;
   if (typeof value?.toDate === "function") return value.toDate();
@@ -62,24 +56,19 @@ function toDate(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function toDateInputValue(date) {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function msFromHours(hours) {
+  return hours * 60 * 60 * 1000;
 }
 
-function toEndOfDay(dateInput) {
-  if (!dateInput) return null;
-  const date = new Date(`${dateInput}T23:59:59.999`);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function isBeforeToday(date) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date.getTime() < today.getTime();
+function splitDurationFromExpiry(expiryDate) {
+  if (!(expiryDate instanceof Date) || expiryDate.getTime() <= Date.now()) {
+    return { days: 7, hours: 1 };
+  }
+  const diffMs = expiryDate.getTime() - Date.now();
+  const totalHours = Math.max(1, Math.round(diffMs / msFromHours(1)));
+  const days = Math.min(30, Math.floor(totalHours / 24));
+  const hours = Math.min(24, Math.max(1, totalHours - days * 24));
+  return { days, hours };
 }
 
 export default function ManagerDashboard() {
@@ -99,7 +88,8 @@ export default function ManagerDashboard() {
   const [orgNameValue, setOrgNameValue] = useState("");
   const [savingOrgName, setSavingOrgName] = useState(false);
   const [orgNameError, setOrgNameError] = useState("");
-  const [inviteExpiryInput, setInviteExpiryInput] = useState("");
+  const [inviteDays, setInviteDays] = useState("7");
+  const [inviteHours, setInviteHours] = useState("1");
   const [savingInviteExpiry, setSavingInviteExpiry] = useState(false);
   const [generatingInviteCode, setGeneratingInviteCode] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState("");
@@ -150,9 +140,9 @@ export default function ManagerDashboard() {
   useEffect(() => {
     setOrgNameValue(orgData?.name || "");
     const currentExpiry = toDate(orgData?.inviteCodeExpiresAt);
-    setInviteExpiryInput(
-      toDateInputValue(currentExpiry || addDays(new Date(), 7)),
-    );
+    const { days, hours } = splitDurationFromExpiry(currentExpiry);
+    setInviteDays(String(days));
+    setInviteHours(String(hours));
   }, [orgData?.name, orgData?.inviteCodeExpiresAt]);
 
   const handleSaveOrgName = async () => {
@@ -179,15 +169,14 @@ export default function ManagerDashboard() {
 
   const handleSaveInviteExpiry = async () => {
     if (!organizationId) return;
-    const nextExpiry = toEndOfDay(inviteExpiryInput);
-    if (!nextExpiry) {
-      setInviteFeedback("Please select a valid expiry date.");
+    const days = Number(inviteDays) || 0;
+    const hours = Number(inviteHours) || 0;
+    const totalHours = days * 24 + hours;
+    if (totalHours <= 0) {
+      setInviteFeedback("Expiry must be at least 1 hour.");
       return;
     }
-    if (isBeforeToday(nextExpiry)) {
-      setInviteFeedback("Expiry date cannot be in the past.");
-      return;
-    }
+    const nextExpiry = new Date(Date.now() + msFromHours(totalHours));
 
     setSavingInviteExpiry(true);
     setInviteFeedback("");
@@ -209,14 +198,14 @@ export default function ManagerDashboard() {
 
   const handleGenerateInviteCode = async () => {
     if (!organizationId) return;
-    const fallbackExpiry = addDays(new Date(), 7);
-    const parsedExpiry = toEndOfDay(inviteExpiryInput);
-    const nextExpiry = parsedExpiry || fallbackExpiry;
-
-    if (isBeforeToday(nextExpiry)) {
-      setInviteFeedback("Expiry date cannot be in the past.");
+    const days = Number(inviteDays) || 0;
+    const hours = Number(inviteHours) || 0;
+    const totalHours = days * 24 + hours;
+    if (totalHours <= 0) {
+      setInviteFeedback("Expiry must be at least 1 hour.");
       return;
     }
+    const nextExpiry = new Date(Date.now() + msFromHours(totalHours));
 
     setGeneratingInviteCode(true);
     setInviteFeedback("");
@@ -289,17 +278,27 @@ export default function ManagerDashboard() {
               </div>
 
               <div className="invite-manage-row">
-                <label className="invite-mini-label" htmlFor="invite-expiry-input">
-                  Expiry
-                </label>
-                <input
-                  id="invite-expiry-input"
-                  type="date"
-                  className="invite-expiry-input"
-                  value={inviteExpiryInput}
-                  min={toDateInputValue(new Date())}
-                  onChange={(e) => setInviteExpiryInput(e.target.value)}
-                />
+                <label className="invite-mini-label">Expires In</label>
+                <div className="invite-duration-group">
+                  <select
+                    className="invite-duration-select"
+                    value={inviteDays}
+                    onChange={(e) => setInviteDays(e.target.value)}
+                  >
+                    {Array.from({ length: 31 }, (_, i) => i).map((d) => (
+                      <option key={d} value={d}>{`${d} day${d === 1 ? "" : "s"}`}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="invite-duration-select"
+                    value={inviteHours}
+                    onChange={(e) => setInviteHours(e.target.value)}
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                      <option key={h} value={h}>{`${h} hour${h === 1 ? "" : "s"}`}</option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   className="btn-secondary invite-action-btn"
                   onClick={handleSaveInviteExpiry}
@@ -316,12 +315,23 @@ export default function ManagerDashboard() {
                 </button>
               </div>
 
-              <p className={`invite-expiry-note${inviteIsExpired ? " expired" : ""}`}>
-                {inviteExpiryDate
-                  ? `Expires on ${inviteExpiryDate.toLocaleDateString()}`
-                  : "No expiry set"}
-              </p>
-              {inviteFeedback && <p className="invite-feedback">{inviteFeedback}</p>}
+              {(() => {
+                const text =
+                  inviteFeedback ||
+                  (inviteExpiryDate
+                    ? `Expires on ${inviteExpiryDate.toLocaleString()}`
+                    : "No expiry set");
+                const expiredClass = inviteFeedback
+                  ? ""
+                  : inviteIsExpired
+                    ? " expired"
+                    : "";
+                return (
+                  <p className={`invite-expiry-note${expiredClass}`}>
+                    {text}
+                  </p>
+                );
+              })()}
             </div>
           </div>
 
