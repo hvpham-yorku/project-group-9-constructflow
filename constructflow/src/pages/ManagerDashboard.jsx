@@ -71,6 +71,11 @@ function splitDurationFromExpiry(expiryDate) {
   return { days, hours };
 }
 
+function formatExpiry(date) {
+  if (!(date instanceof Date)) return "No expiry set";
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+}
+
 export default function ManagerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
@@ -93,6 +98,7 @@ export default function ManagerDashboard() {
   const [savingInviteExpiry, setSavingInviteExpiry] = useState(false);
   const [generatingInviteCode, setGeneratingInviteCode] = useState(false);
   const [inviteFeedback, setInviteFeedback] = useState("");
+  const [expiryStatus, setExpiryStatus] = useState("No expiry set");
 
   useEffect(() => {
     if (!organizationId) return;
@@ -189,7 +195,7 @@ export default function ManagerDashboard() {
         ...(prev || {}),
         inviteCodeExpiresAt: expiryTimestamp,
       }));
-      setInviteFeedback(`Expires on ${nextExpiry.toLocaleDateString()}.`);
+      setInviteFeedback("Expiry updated.");
     } catch (err) {
       setInviteFeedback(err.message || "Failed to save expiry.");
     }
@@ -232,6 +238,34 @@ export default function ManagerDashboard() {
   const inviteExpiryDate = toDate(orgData?.inviteCodeExpiresAt);
   const inviteIsExpired =
     inviteExpiryDate instanceof Date && inviteExpiryDate.getTime() < Date.now();
+
+  useEffect(() => {
+    if (!(inviteExpiryDate instanceof Date)) {
+      setExpiryStatus("No expiry set");
+      return undefined;
+    }
+
+    const updateStatus = () => {
+      const now = Date.now();
+      const ms = inviteExpiryDate.getTime() - now;
+      if (ms <= 0) {
+        setExpiryStatus(`Expired on ${formatExpiry(inviteExpiryDate)}`);
+        return;
+      }
+      const totalSeconds = Math.floor(ms / 1000);
+      const days = Math.floor(totalSeconds / 86400);
+      const hours = Math.floor((totalSeconds % 86400) / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      setExpiryStatus(
+        `Expires in ${days}d ${hours}h ${minutes}m ${seconds}s (on ${formatExpiry(inviteExpiryDate)})`,
+      );
+    };
+
+    updateStatus();
+    const id = setInterval(updateStatus, 1000);
+    return () => clearInterval(id);
+  }, [inviteExpiryDate]);
 
   const STATUS_COLORS = {
     active: { bg: "#dcfce7", fg: "#16a34a" },
@@ -316,16 +350,14 @@ export default function ManagerDashboard() {
               </div>
 
               {(() => {
-                const text =
-                  inviteFeedback ||
-                  (inviteExpiryDate
-                    ? `Expires on ${inviteExpiryDate.toLocaleString()}`
-                    : "No expiry set");
-                const expiredClass = inviteFeedback
-                  ? ""
-                  : inviteIsExpired
-                    ? " expired"
-                    : "";
+                const base = expiryStatus;
+                const feedbackIsExpiry = /^Expires/i.test(inviteFeedback || "");
+                const text = inviteFeedback
+                  ? feedbackIsExpiry
+                    ? inviteFeedback
+                    : `${base} — ${inviteFeedback}`
+                  : base;
+                const expiredClass = !inviteFeedback && inviteIsExpired ? " expired" : "";
                 return (
                   <p className={`invite-expiry-note${expiredClass}`}>
                     {text}
