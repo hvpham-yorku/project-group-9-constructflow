@@ -18,7 +18,6 @@ import {
   // MdBarChart,
   MdSettings,
   MdLogout,
-  MdBusiness,
 } from "react-icons/md";
 import "../styles/Sidebar.css";
 
@@ -63,7 +62,11 @@ function Sidebar() {
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-brand">
-          <MdBusiness className="brand-icon" />
+          <img
+            src="/favicon.svg"
+            alt="ConstructFlow logo"
+            className="brand-icon"
+          />
           <div className="brand-text">
             <span className="brand-name">ConstructFlow</span>
           </div>

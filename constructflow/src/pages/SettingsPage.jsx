@@ -6,7 +6,7 @@
  * password, then removes the Firestore user doc and the Firebase Auth account.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   deleteUser,
@@ -14,8 +14,8 @@ import {
   EmailAuthProvider,
   updatePassword,
 } from "firebase/auth";
-import { doc, deleteDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
+import { doc, deleteDoc, getDoc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import { useAuth } from "../contexts/AuthContext";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -48,6 +48,9 @@ const WORKER_ROLES = [
 export default function SettingsPage() {
   const { currentUser, userProfile, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const organizationId = userProfile?.organizationId || null;
+  const canEditOrganization =
+    userProfile?.role === "manager" && Boolean(organizationId);
 
   // ── Display name editing ────────────────────────────────────────────────
   const [editingName, setEditingName] = useState(false);
@@ -176,9 +179,77 @@ export default function SettingsPage() {
     setRoleSaving(false);
   };
 
+  // ── Organization name (manager only) ───────────────────────────────────
+  const [organizationName, setOrganizationName] = useState("");
+  const [organizationLoading, setOrganizationLoading] = useState(false);
+  const [editingOrganizationName, setEditingOrganizationName] = useState(false);
+  const [organizationNameValue, setOrganizationNameValue] = useState("");
+  const [organizationSaving, setOrganizationSaving] = useState(false);
+  const [organizationError, setOrganizationError] = useState("");
+  const [organizationSuccess, setOrganizationSuccess] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadOrganization = async () => {
+      if (!organizationId) {
+        if (mounted) {
+          setOrganizationName("");
+          setOrganizationNameValue("");
+        }
+        return;
+      }
+      setOrganizationLoading(true);
+      try {
+        const snap = await getDoc(doc(db, "organizations", organizationId));
+        if (!mounted) return;
+        const fetchedName = snap.exists() ? snap.data()?.name || "" : "";
+        setOrganizationName(fetchedName);
+        setOrganizationNameValue(fetchedName);
+      } catch {
+        if (!mounted) return;
+        setOrganizationName("");
+        setOrganizationNameValue("");
+      }
+      if (mounted) setOrganizationLoading(false);
+    };
+
+    loadOrganization();
+    return () => {
+      mounted = false;
+    };
+  }, [organizationId]);
+
+  const saveOrganizationName = async () => {
+    if (!canEditOrganization || !organizationId) return;
+    if (!organizationNameValue.trim()) {
+      setOrganizationError("Organisation name cannot be empty.");
+      return;
+    }
+    setOrganizationSaving(true);
+    setOrganizationError("");
+    try {
+      const nextName = organizationNameValue.trim();
+      await updateDoc(doc(db, "organizations", organizationId), {
+        name: nextName,
+      });
+      setOrganizationName(nextName);
+      setEditingOrganizationName(false);
+      setOrganizationSuccess(true);
+      setTimeout(() => setOrganizationSuccess(false), 3000);
+    } catch {
+      setOrganizationError("Failed to update organisation name.");
+    }
+    setOrganizationSaving(false);
+  };
+
   const email = currentUser?.email || "—";
   const displayName = nameSuccess ? nameValue.trim() : userProfile?.name || "—";
   const role = ROLE_LABELS[userProfile?.role] || "—";
+  const shownOrganizationName = organizationId
+    ? organizationSuccess
+      ? organizationNameValue.trim()
+      : organizationName || (organizationLoading ? "Loading…" : "—")
+    : "No organisation";
 
   return (
     <div className="dashboard">
@@ -329,6 +400,78 @@ export default function SettingsPage() {
                         className="icon-btn edit"
                         onClick={() => setEditingRole(true)}
                         title="Change role"
+                      >
+                        <MdEdit />
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Organisation */}
+              <div className="setting-row">
+                <div className="setting-row-icon">
+                  <MdWorkspaces />
+                </div>
+                <div className="setting-row-body">
+                  <span className="setting-row-label">Organisation</span>
+                  {editingOrganizationName ? (
+                    <div className="setting-edit-inline">
+                      <input
+                        className="setting-input"
+                        value={organizationNameValue}
+                        onChange={(e) => setOrganizationNameValue(e.target.value)}
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && saveOrganizationName()
+                        }
+                        autoFocus
+                      />
+                      {organizationError && (
+                        <span className="setting-error">{organizationError}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="setting-row-value">
+                      {shownOrganizationName}
+                      {organizationSuccess && (
+                        <span className="setting-success-inline"> ✓ Saved</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+                {canEditOrganization && (
+                  <div className="setting-row-action">
+                    {editingOrganizationName ? (
+                      <>
+                        <button
+                          className="icon-btn confirm"
+                          onClick={saveOrganizationName}
+                          disabled={organizationSaving}
+                          title="Save organisation"
+                        >
+                          <MdCheck />
+                        </button>
+                        <button
+                          className="icon-btn cancel"
+                          onClick={() => {
+                            setEditingOrganizationName(false);
+                            setOrganizationNameValue(organizationName || "");
+                            setOrganizationError("");
+                          }}
+                          title="Cancel"
+                        >
+                          <MdClose />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        className="icon-btn edit"
+                        onClick={() => {
+                          setEditingOrganizationName(true);
+                          setOrganizationError("");
+                        }}
+                        title="Edit organisation"
+                        disabled={organizationLoading}
                       >
                         <MdEdit />
                       </button>

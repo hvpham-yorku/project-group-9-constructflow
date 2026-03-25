@@ -134,6 +134,18 @@
   color: white !important;
 }
 
+.drain-pipe-btn {
+  border-color: #94a3b8 !important;
+  color: #64748b !important;
+}
+.drain-pipe-btn:hover:not(:disabled) {
+  background: #f1f5f9 !important;
+}
+.drain-pipe-btn.active {
+  background: #94a3b8 !important;
+  color: white !important;
+}
+
 .fixture-area-btn {
   border-color: #0f766e !important;
   color: #0f766e !important;
@@ -226,6 +238,9 @@
 }
 .cold-pipe-icon {
   background: #2563eb;
+}
+.drain-pipe-icon {
+  background: #94a3b8;
 }
 .connection-icon {
   background: #7c3aed;
@@ -514,6 +529,9 @@
 .section-card.cold_pipe {
   border-left-color: #2563eb;
 }
+.section-card.drain_pipe {
+  border-left-color: #94a3b8;
+}
 .section-card.fixture_area {
   border-left-color: #0f766e;
 }
@@ -567,6 +585,9 @@
 .type-dot.cold_pipe {
   background: #2563eb;
 }
+.type-dot.drain_pipe {
+  background: #94a3b8;
+}
 .type-dot.fixture_area {
   background: #0f766e;
 }
@@ -578,6 +599,9 @@
   background: #166534;
 }
 .type-dot.cold_pipe.completed {
+  background: #166534;
+}
+.type-dot.drain_pipe.completed {
   background: #166534;
 }
 .type-dot.connection.completed {

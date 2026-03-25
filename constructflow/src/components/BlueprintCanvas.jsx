@@ -304,7 +304,7 @@ function BlueprintCanvas({
 
     if (activeObjectId) {
       const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
-      const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "connection"].includes(activeType);
+      const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "connection"].includes(activeType);
       setMousePos(shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid);
     }
     if (dragging) {
@@ -317,7 +317,7 @@ function BlueprintCanvas({
     if (isDrawingFixtureArea) return;
     const raw = clientToSvg(e.clientX, e.clientY);
     const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
-    const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "connection"].includes(activeType);
+    const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "connection"].includes(activeType);
     const pos = shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid;
     setCurrentPoints((prev) => [...prev, pos]);
     setRedoStack([]);

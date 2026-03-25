@@ -4,8 +4,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a1f2e 0%, #2d3561 100%);
+  background: #1a1f2e;
   padding: 24px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 
 /* Subtle grid overlay */
@@ -13,11 +16,47 @@
   content: "";
   position: fixed;
   inset: 0;
+  background-color: #1a1f2e;
   background-image:
-    linear-gradient(rgba(30, 58, 138, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(30, 58, 138, 0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(rgba(120, 141, 201, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 141, 201, 0.18) 1px, transparent 1px),
+    linear-gradient(rgba(120, 141, 201, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(120, 141, 201, 0.08) 1px, transparent 1px),
+    radial-gradient(circle at 50% 42%, rgba(30, 58, 138, 0.28), transparent 62%);
+  background-size:
+    48px 48px,
+    48px 48px,
+    12px 12px,
+    12px 12px,
+    100% 100%;
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    0 0,
+    center;
+  animation: blueprintDrift 55s linear infinite;
+  z-index: 0;
   pointer-events: none;
+}
+
+@keyframes blueprintDrift {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      center;
+  }
+  to {
+    background-position:
+      96px 96px,
+      96px 96px,
+      96px 96px,
+      96px 96px,
+      center;
+  }
 }
 
 /* ─── Card ───────────────────────────────────────────────────── */
@@ -29,6 +68,7 @@
   width: 100%;
   max-width: 460px;
   position: relative;
+  z-index: 1;
   animation: loginCardIn 0.4s ease;
 }
 
@@ -58,12 +98,16 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  border-radius: 18px;
+  background: transparent;
+  border-radius: 0;
   margin-bottom: 16px;
-  font-size: 32px;
-  color: #fff;
-  box-shadow: 0 8px 24px rgba(30, 58, 138, 0.35);
+  box-shadow: none;
+}
+
+.login-brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
 }
 
 .login-brand h1 {
@@ -145,7 +189,7 @@
 .login-submit {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: #fff;
   border: none;
   border-radius: 10px;

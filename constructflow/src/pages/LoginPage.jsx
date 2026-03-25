@@ -7,7 +7,6 @@
  */
 
 import { useState } from "react";
-import { MdConstruction } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "../styles/LoginPage.css";
@@ -71,7 +70,7 @@ function LoginPage() {
         {/* ── Brand ── */}
         <div className="login-brand">
           <div className="login-brand-icon">
-            <MdConstruction />
+            <img src="/favicon.svg" alt="ConstructFlow logo" className="login-brand-logo" />
           </div>
           <h1>ConstructFlow</h1>
           <p>Construction Project Management</p>

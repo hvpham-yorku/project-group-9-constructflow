@@ -65,11 +65,15 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-  border-radius: 14px;
+  background: transparent;
+  border-radius: 0;
   margin: 0 auto 16px;
-  font-size: 28px;
-  color: #fff;
+}
+
+.modal-logo-image {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
 }
 
 .modal-header h2 {
@@ -132,7 +136,7 @@
 .btn-primary {
   width: 100%;
   padding: 14px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+  background: #1e3a8a;
   color: white;
   border: none;
   border-radius: 8px;

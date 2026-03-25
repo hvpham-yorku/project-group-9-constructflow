@@ -7,7 +7,7 @@
  */
 
 import { useState } from "react";
-import { MdConstruction, MdClose } from "react-icons/md";
+import { MdClose } from "react-icons/md";
 import { useAuth } from "../contexts/AuthContext";
 import "../styles/AuthModal.css";
 
@@ -80,7 +80,11 @@ function AuthModal({ isOpen, onClose }) {
 
         <div className="modal-header">
           <div className="modal-logo">
-            <MdConstruction />
+            <img
+              src="/favicon.svg"
+              alt="ConstructFlow logo"
+              className="modal-logo-image"
+            />
           </div>
           <h2>{isSignUp ? "Create Account" : "Welcome Back"}</h2>
           <p>

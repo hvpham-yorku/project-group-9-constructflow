@@ -26,6 +26,7 @@ import {
   doc,
   updateDoc,
   serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/OrganizationPage.css";
@@ -37,6 +38,19 @@ function generateCode(len = 6) {
   for (let i = 0; i < len; i++)
     code += chars[Math.floor(Math.random() * chars.length)];
   return code;
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 const WORKER_TYPES = [
@@ -79,16 +93,18 @@ export default function OrganizationPage() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!orgName.trim())
-      return setCreateError("Please enter an organisation name.");
+      return setCreateError("Please enter an organization name.");
     setCreateError("");
     setCreateLoading(true);
     try {
       const inviteCode = generateCode();
+      const inviteCodeExpiresAt = Timestamp.fromDate(addDays(new Date(), 7));
       const orgRef = await addDoc(collection(db, "organizations"), {
         name: orgName.trim(),
         managerId: currentUser.uid,
         managerName: userProfile?.name || "",
         inviteCode,
+        inviteCodeExpiresAt,
         createdAt: serverTimestamp(),
         members: {
           [currentUser.uid]: {
@@ -101,7 +117,7 @@ export default function OrganizationPage() {
       // Promote the user to manager in their Firestore profile
       await updateUserProfile({ role: "manager", organizationId: orgRef.id });
     } catch (err) {
-      setCreateError(err.message || "Failed to create organisation.");
+      setCreateError(err.message || "Failed to create organization.");
       setCreateLoading(false);
     }
   };
@@ -122,7 +138,13 @@ export default function OrganizationPage() {
         setCodeError("Invalid invite code. Check with your manager.");
       } else {
         const orgDoc = snap.docs[0];
-        setPendingOrg({ id: orgDoc.id, name: orgDoc.data().name });
+        const org = orgDoc.data();
+        const expiresAt = toDate(org.inviteCodeExpiresAt);
+        if (expiresAt && expiresAt.getTime() < Date.now()) {
+          setCodeError("Invite code has expired. Ask your manager for a new code.");
+        } else {
+          setPendingOrg({ id: orgDoc.id, name: org.name });
+        }
       }
     } catch (err) {
       setCodeError(err.message || "Something went wrong.");
@@ -152,7 +174,7 @@ export default function OrganizationPage() {
         organizationId: pendingOrg.id,
       });
     } catch (err) {
-      setJoinError(err.message || "Failed to join organisation.");
+      setJoinError(err.message || "Failed to join organization.");
       setJoinLoading(false);
     }
   };
@@ -193,7 +215,7 @@ export default function OrganizationPage() {
               className="btn-org-primary"
               disabled={!workerType || joinLoading}
             >
-              {joinLoading ? "Joining…" : "Join Organisation"}
+              {joinLoading ? "Joining…" : "Join Organization"}
             </button>
             <button
               type="button"
@@ -218,7 +240,7 @@ export default function OrganizationPage() {
         </div>
         <h1>Get Started</h1>
         <p className="org-card-sub">
-          Hi <strong>{userProfile?.name}</strong>! Create a new organisation or
+          Hi <strong>{userProfile?.name}</strong>! Create a new organization or
           join one with an invite code.
         </p>
 
@@ -227,13 +249,13 @@ export default function OrganizationPage() {
             className={`org-tab${tab === "create" ? " active" : ""}`}
             onClick={() => setTab("create")}
           >
-            Create Organisation
+            Create Organization
           </button>
           <button
             className={`org-tab${tab === "join" ? " active" : ""}`}
             onClick={() => setTab("join")}
           >
-            Join Organisation
+            Join Organization
           </button>
         </div>
 
@@ -242,7 +264,7 @@ export default function OrganizationPage() {
           <form onSubmit={handleCreate} className="org-form">
             {createError && <div className="org-error">{createError}</div>}
             <div className="org-form-group">
-              <label>Organisation Name</label>
+              <label>Organization Name</label>
               <input
                 type="text"
                 placeholder=""
@@ -261,7 +283,7 @@ export default function OrganizationPage() {
               className="btn-org-primary"
               disabled={createLoading}
             >
-              {createLoading ? "Creating…" : "Create Organisation"}
+              {createLoading ? "Creating…" : "Create Organization"}
             </button>
           </form>
         )}

@@ -155,6 +155,11 @@
   stroke: #2563eb;
 }
 
+/* Drainage pipe = silver */
+.blueprint-object.drain_pipe {
+  stroke: #94a3b8;
+}
+
 /* Electrical wire = purple */
 .blueprint-object.connection {
   stroke: #7c3aed;

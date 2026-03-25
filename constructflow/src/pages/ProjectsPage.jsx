@@ -14,7 +14,6 @@ import {
   MdConstruction,
   MdClose,
   MdArrowForward,
-  MdCheckCircle,
 } from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
@@ -36,6 +35,59 @@ import "../styles/ProjectsPage.css";
 const STATUS_COLORS = {
   active: { bg: "#dcfce7", fg: "#16a34a" },
   completed: { bg: "#dbeafe", fg: "#1d4ed8" },
+};
+
+const countBlueprintUnits = (objects = {}) => {
+  const stats = { total: 0, completed: 0 };
+
+  Object.values(objects).forEach((obj) => {
+    const pointTasks = Array.isArray(obj?.pointTasks) ? obj.pointTasks : [];
+    const requiredPointTasks = pointTasks.filter((task) => task?.requiredType);
+
+    if (requiredPointTasks.length > 0) {
+      stats.total += requiredPointTasks.length;
+      stats.completed += requiredPointTasks.filter((task) => task.completed).length;
+      return;
+    }
+
+    stats.total += 1;
+    if (obj?.completed) stats.completed += 1;
+  });
+
+  return stats;
+};
+
+const getBlueprintCompletion = (blueprint) => {
+  const { total, completed } = countBlueprintUnits(blueprint?.objects || {});
+  if (total === 0) return 0;
+  return Math.round((completed / total) * 100);
+};
+
+const getTaskCompletion = (taskId, blueprints) => {
+  const taskBlueprints = blueprints.filter((blueprint) => blueprint.taskId === taskId);
+  if (taskBlueprints.length === 0) return 0;
+  const totalPercentage = taskBlueprints.reduce(
+    (sum, blueprint) => sum + getBlueprintCompletion(blueprint),
+    0,
+  );
+  return Math.round(totalPercentage / taskBlueprints.length);
+};
+
+const getProjectCompletion = (projectTasks = [], blueprints = []) => {
+  if (projectTasks.length === 0) return 0;
+  const totalTaskCompletion = projectTasks.reduce(
+    (sum, task) => sum + getTaskCompletion(task.id, blueprints),
+    0,
+  );
+  return Math.round(totalTaskCompletion / projectTasks.length);
+};
+
+const getEffectiveProjectStatus = (project) => {
+  const completion = Number(project?.completion);
+  if (Number.isFinite(completion) && completion >= 100) {
+    return "completed";
+  }
+  return project?.status || "active";
 };
 
 export default function ProjectsPage() {
@@ -65,14 +117,28 @@ export default function ProjectsPage() {
       const snap = await getDocs(q);
       let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
+      const taskQ = query(
+        collection(db, "tasks"),
+        where("organizationId", "==", organizationId),
+      );
+      const taskSnap = await getDocs(taskQ);
+      const allOrgTasks = taskSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      const blueprintQ = query(
+        collection(db, "blueprints"),
+        where("organizationId", "==", organizationId),
+      );
+      const blueprintSnap = await getDocs(blueprintQ);
+      const allOrgBlueprints = blueprintSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
       if (!isManager && userProfile?.uid) {
-        const taskQ = query(
+        const workerTaskQ = query(
           collection(db, "tasks"),
           where("assignedWorkerId", "==", userProfile.uid),
         );
-        const taskSnap = await getDocs(taskQ);
+        const workerTaskSnap = await getDocs(workerTaskQ);
         const assignedProjectIds = new Set(
-          taskSnap.docs
+          workerTaskSnap.docs
             .map((d) => d.data())
             .filter((task) => task.organizationId === organizationId)
             .map((task) => task.projectId)
@@ -81,6 +147,42 @@ export default function ProjectsPage() {
 
         list = list.filter((project) => assignedProjectIds.has(project.id));
       }
+
+      const tasksByProjectId = new Map();
+      allOrgTasks.forEach((task) => {
+        if (!task?.projectId) return;
+        const current = tasksByProjectId.get(task.projectId) || [];
+        current.push(task);
+        tasksByProjectId.set(task.projectId, current);
+      });
+
+      const withAutoStatus = list.map((project) => {
+        const projectTasks = tasksByProjectId.get(project.id) || [];
+        const completion = getProjectCompletion(projectTasks, allOrgBlueprints);
+        const allTasksCompleted =
+          projectTasks.length > 0 &&
+          projectTasks.every((task) => getTaskCompletion(task.id, allOrgBlueprints) >= 100);
+
+        return {
+          ...project,
+          completion,
+          status: allTasksCompleted ? "completed" : "active",
+          _storedStatus: project.status || "active",
+        };
+      });
+
+      if (isManager) {
+        const statusUpdates = withAutoStatus
+          .filter((project) => project._storedStatus !== project.status)
+          .map((project) =>
+            updateDoc(doc(db, "projects", project.id), { status: project.status }),
+          );
+        if (statusUpdates.length > 0) {
+          await Promise.allSettled(statusUpdates);
+        }
+      }
+
+      list = withAutoStatus.map(({ _storedStatus, ...project }) => project);
 
       list.sort(
         (a, b) =>
@@ -122,20 +224,6 @@ export default function ProjectsPage() {
     setCreating(false);
   };
 
-  // ── Mark project complete ────────────────────────────────────────────────
-  const handleMarkComplete = async (id, e) => {
-    e.stopPropagation();
-    if (!window.confirm("Mark this project as completed?")) return;
-    try {
-      await updateDoc(doc(db, "projects", id), { status: "completed" });
-      setProjects((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, status: "completed" } : p)),
-      );
-    } catch (err) {
-      alert("Failed to update project status.");
-    }
-  };
-
   // ── Delete project ──────────────────────────────────────────────────────
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -156,7 +244,7 @@ export default function ProjectsPage() {
   const filtered =
     filter === "all"
       ? projects
-      : projects.filter((p) => (p.status || "active") === filter);
+      : projects.filter((p) => getEffectiveProjectStatus(p) === filter);
 
   // ── Render ──────────────────────────────────────────────────────────────
   return (
@@ -216,7 +304,7 @@ export default function ProjectsPage() {
           ) : (
             <div className="projects-grid">
               {filtered.map((project) => {
-                const status = project.status || "active";
+                const status = getEffectiveProjectStatus(project);
                 const sc = STATUS_COLORS[status] || STATUS_COLORS.active;
                 return (
                   <div
@@ -239,6 +327,20 @@ export default function ProjectsPage() {
                     {project.description && (
                       <p className="project-card-desc">{project.description}</p>
                     )}
+
+                    <div className="project-progress" aria-label={`Project progress ${project.completion || 0}%`}>
+                      <div className="project-progress-copy">
+                        <span>Progress</span>
+                        <strong>{project.completion || 0}%</strong>
+                      </div>
+                      <div className="project-progress-bar" aria-hidden="true">
+                        <div
+                          className="project-progress-fill"
+                          style={{ width: `${project.completion || 0}%` }}
+                        />
+                      </div>
+                    </div>
+
                     <div className="project-card-footer">
                       <span className="project-card-date">
                         {project.createdAt?.toDate
@@ -255,15 +357,6 @@ export default function ProjectsPage() {
                         >
                           Open <MdArrowForward />
                         </button>
-                        {isManager && status !== "completed" && (
-                          <button
-                            className="btn-complete-project"
-                            onClick={(e) => handleMarkComplete(project.id, e)}
-                            title="Mark as completed"
-                          >
-                            <MdCheckCircle />
-                          </button>
-                        )}
                         {isManager && (
                           <button
                             className="btn-delete-sm"

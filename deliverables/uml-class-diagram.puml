@@ -1,0 +1,136 @@
+@startuml
+left to right direction
+skinparam roundcorner 5
+skinparam classAttributeIconSize 0
+
+class User {
+  + uid: string
+  + email: string
+  + name: string
+  + role: Role
+  + organizationId: string
+  + createdAt: datetime
+}
+
+class Organization {
+  + id: string
+  + name: string
+  + managerId: string
+  + managerName: string
+  + inviteCode: string
+  + createdAt: datetime
+  + members: Map<uid, MemberMeta>
+}
+
+class MemberMeta {
+  + name: string
+  + role: Role
+  + joinedAt: datetime
+}
+
+class Project {
+  + id: string
+  + name: string
+  + description: string
+  + organizationId: string
+  + managerId: string
+  + status: ProjectStatus
+  + createdAt: datetime
+}
+
+class Task {
+  + id: string
+  + projectId: string
+  + organizationId: string
+  + title: string
+  + description: string
+  + dueDate: date
+  + assignedWorkerId: string
+  + assignedWorkerName: string
+  + createdBy: string
+  + createdAt: datetime
+  + completed: boolean
+}
+
+class Blueprint {
+  + id: string
+  + name: string
+  + imageUrl: string
+  + projectId: string
+  + taskId: string
+  + organizationId: string
+  + objects: Map<objectId, BlueprintObject>
+  + createdAt: datetime
+  + updatedAt: datetime
+}
+
+class BlueprintObject {
+  + id: string
+  + type: ObjectType
+  + pathPoints: Point[]
+  + pointTasks: PointTask[]
+  + rect: Rect
+  + fixtureName: string
+  + connectionCount: int
+  + assignedTo: string
+  + assignedToName: string
+  + completed: boolean
+}
+
+class PointTask {
+  + requiredType: string
+  + completed: boolean
+  + instructions: string
+}
+
+class Point {
+  + x: number
+  + y: number
+}
+
+class Rect {
+  + x: number
+  + y: number
+  + width: number
+  + height: number
+}
+
+enum Role {
+  general
+  manager
+  electrician
+  plumber
+}
+
+enum ProjectStatus {
+  active
+  completed
+  pending
+}
+
+enum ObjectType {
+  hot_pipe
+  cold_pipe
+  drain_pipe
+  fixture_area
+  connection
+  pipe
+}
+
+' Relationships
+Organization "1" --> "*" User : contains members >
+Organization "1" --> "*" Project : owns >
+Organization "1" --> "*" Task : scopes >
+Organization "1" --> "*" Blueprint : scopes >
+
+Project "1" --> "*" Task : has >
+Project "1" --> "*" Blueprint : has >
+
+Task "0..1" --> "*" Blueprint : task-scoped blueprints >
+User "1" --> "*" Task : assignedWorker >
+Blueprint "1" --> "*" BlueprintObject : objects >
+BlueprintObject "1" --> "*" PointTask : pointTasks >
+BlueprintObject "1" --> "*" Point : pathPoints >
+BlueprintObject "*" --> "0..1" User : assignedTo >
+
+@enduml

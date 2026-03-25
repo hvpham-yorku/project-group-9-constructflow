@@ -15,6 +15,20 @@ Customer meeting’s summary video: https://youtu.be/ytbclsm6Geg [![YouTube](htt
 Change made:  
 Blueprint is used as a helper for the tasks assigned, rather than it serving as the main workspace. Our customer suggested using the blueprint feature as an addition to assigning tasks to promote better organization and clarity. Having the blueprint as the main workspace would cause confusion for the workers.
 
+### Delivery 1
+
+[Peer evaluation form](deliverables/EECS2311Z-Delivery1-PeerReview-Group9.pdf) is in the `deliverables` folder.  
+
+### ITR2
+
+Updated user stories: [ITR2-user-stories](deliverables/ITR2-user-stories.pdf)   
+
+#### UML Class Diagram
+
+The UML class diagram was created using [Plant UML](https://plantuml.com/).  
+Here is the code: [uml-class-diagram.puml](deliverables/uml-class-diagram.puml).  
+Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).  
+
 ---
 
 # ConstructFlow
@@ -29,6 +43,10 @@ cd constructflow
 ```
 
 Then follow the directions in [constructflow/README.md](constructflow/README.md).
+
+## How to test
+
+Follow the directions in [constructflow/README.md](constructflow/README.md) Testing section.
 
 ## Features
 

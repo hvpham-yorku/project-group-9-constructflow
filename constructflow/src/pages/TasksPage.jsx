@@ -17,6 +17,46 @@ import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
 import "../styles/TasksPage.css";
 
+const countBlueprintUnits = (objects = {}) => {
+  const stats = { total: 0, completed: 0 };
+
+  Object.values(objects).forEach((obj) => {
+    const pointTasks = Array.isArray(obj?.pointTasks) ? obj.pointTasks : [];
+    const requiredPointTasks = pointTasks.filter((task) => task?.requiredType);
+
+    if (requiredPointTasks.length > 0) {
+      stats.total += requiredPointTasks.length;
+      stats.completed += requiredPointTasks.filter((task) => task.completed).length;
+      return;
+    }
+
+    stats.total += 1;
+    if (obj?.completed) {
+      stats.completed += 1;
+    }
+  });
+
+  return stats;
+};
+
+const getBlueprintCompletion = (blueprint) => {
+  const { total, completed } = countBlueprintUnits(blueprint?.objects || {});
+  if (total === 0) return 0;
+  return Math.round((completed / total) * 100);
+};
+
+const getTaskCompletion = (taskId, blueprints) => {
+  const taskBlueprints = blueprints.filter((blueprint) => blueprint.taskId === taskId);
+  if (taskBlueprints.length === 0) return 0;
+
+  const totalPercentage = taskBlueprints.reduce(
+    (sum, blueprint) => sum + getBlueprintCompletion(blueprint),
+    0,
+  );
+
+  return Math.round(totalPercentage / taskBlueprints.length);
+};
+
 export default function TasksPage() {
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -24,6 +64,7 @@ export default function TasksPage() {
 
   const [project, setProject] = useState(null);
   const [tasks, setTasks] = useState([]);
+  const [taskBlueprints, setTaskBlueprints] = useState([]);
   const [workers, setWorkers] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -40,9 +81,15 @@ export default function TasksPage() {
   );
 
   const visibleTasks = useMemo(() => {
-    if (isManager) return tasks;
-    return tasks.filter((task) => task.assignedWorkerId === currentUser?.uid);
-  }, [tasks, isManager, currentUser?.uid]);
+    const taskList = isManager
+      ? tasks
+      : tasks.filter((task) => task.assignedWorkerId === currentUser?.uid);
+
+    return taskList.map((task) => ({
+      ...task,
+      completion: getTaskCompletion(task.id, taskBlueprints),
+    }));
+  }, [tasks, taskBlueprints, isManager, currentUser?.uid]);
 
   const handleOpenBlueprint = (task) => {
     navigate(`/projects/${projectId}/tasks/${task.id}/blueprints`);
@@ -64,6 +111,16 @@ export default function TasksPage() {
       const list = taskSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
       setTasks(list);
+
+      const blueprintsQ = query(
+        collection(db, "blueprints"),
+        where("projectId", "==", projectId),
+      );
+      const blueprintsSnap = await getDocs(blueprintsQ);
+      const blueprints = blueprintsSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((blueprint) => blueprint.taskId);
+      setTaskBlueprints(blueprints);
     } catch (err) {
       console.error("Load tasks page:", err);
     }
@@ -265,6 +322,22 @@ export default function TasksPage() {
                       >
                         Open Blueprint
                       </button>
+
+                      <div
+                        className="task-progress"
+                        aria-label={`Task progress ${task.completion}%`}
+                      >
+                        <div className="task-progress-copy">
+                          <span>Progress</span>
+                          <strong>{task.completion}%</strong>
+                        </div>
+                        <div className="task-progress-bar" aria-hidden="true">
+                          <div
+                            className="task-progress-fill"
+                            style={{ width: `${task.completion}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

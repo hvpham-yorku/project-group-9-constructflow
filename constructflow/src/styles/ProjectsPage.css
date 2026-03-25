@@ -122,6 +122,39 @@
   -webkit-box-orient: vertical;
 }
 
+.project-progress {
+  margin-top: 2px;
+}
+
+.project-progress-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.project-progress-copy strong {
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.project-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #dbe4f0;
+  overflow: hidden;
+}
+
+.project-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #1e3a8a;
+  transition: width 0.25s ease;
+}
+
 .project-card-footer {
   display: flex;
   justify-content: space-between;
@@ -178,27 +211,6 @@
   background: #eff6ff;
   border-color: #fc8181;
   color: #e53e3e;
-}
-
-.btn-complete-project {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #a0aec0;
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.btn-complete-project:hover {
-  background: #f0fdf4;
-  border-color: #86efac;
-  color: #16a34a;
 }
 
 /* ── Empty / Loading ─────────────────────────────────────────────── */

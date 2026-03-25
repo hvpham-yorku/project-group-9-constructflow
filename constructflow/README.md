@@ -39,6 +39,16 @@ npm run dev
 
 The app runs on `http://localhost:5173` by default.
 
+## Testing
+
+```bash
+# Install dependencies
+npm install
+
+# Run the tests
+npx vitest run
+```
+
 ## App Structure
 
 - `src/pages/` - Main route pages (dashboards, projects, workers, etc.)
