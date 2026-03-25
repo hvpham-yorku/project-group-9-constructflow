@@ -20,6 +20,7 @@ import ProjectsPage from "./pages/ProjectsPage";
 import TasksPage from "./pages/TasksPage";
 import WorkersPage from "./pages/WorkersPage";
 import ShiftPlannerPage from "./pages/ShiftPlannerPage";
+import WorkerShiftsPage from "./pages/WorkerShiftsPage";
 // import ReportsPage from "./pages/ReportsPage"; // Temporarily disabled
 import SettingsPage from "./pages/SettingsPage";
 import "./App.css";
@@ -43,8 +44,7 @@ function Spinner() {
 }
 
 function DashboardRouter() {
-  const { currentUser, userProfile, isManager, isWorker, hasOrg, loading } =
-    useAuth();
+  const { currentUser, isManager, isWorker, hasOrg, loading } = useAuth();
 
   if (loading) return <Spinner />;
 
@@ -97,6 +97,7 @@ function DashboardRouter() {
           path="/projects/:projectId/blueprints"
           element={<BlueprintViewer />}
         />
+        <Route path="/shifts" element={<WorkerShiftsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

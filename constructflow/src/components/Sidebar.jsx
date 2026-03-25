@@ -34,6 +34,7 @@ const MANAGER_LINKS = [
 const WORKER_LINKS = [
   { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
   { name: "Projects", icon: MdFolder, path: "/projects" },
+  { name: "Shifts", icon: MdCalendarMonth, path: "/shifts" },
   { name: "Settings", icon: MdSettings, path: "/settings" },
 ];
 
