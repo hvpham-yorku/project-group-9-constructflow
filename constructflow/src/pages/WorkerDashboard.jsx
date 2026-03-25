@@ -25,6 +25,7 @@ import {
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -41,6 +42,8 @@ const ROLE_COLORS = {
   plumber: { bg: "#e0e7ff", fg: "#be123c" },
 };
 
+const INITIAL_NOW_MS = Date.now();
+
 function toDate(value) {
   if (!value) return null;
   if (typeof value?.toDate === "function") return value.toDate();
@@ -54,6 +57,14 @@ function formatDateTime(value) {
   return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
+function toDayKey(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function WorkerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
@@ -64,7 +75,7 @@ export default function WorkerDashboard() {
   const [workerRecord, setWorkerRecord] = useState(null);
   const [clockActionLoading, setClockActionLoading] = useState(false);
   const [clockMessage, setClockMessage] = useState("");
-  const [nowMs, setNowMs] = useState(0);
+  const [nowMs, setNowMs] = useState(INITIAL_NOW_MS);
 
   const currentUid = currentUser?.uid || null;
 
@@ -128,6 +139,11 @@ export default function WorkerDashboard() {
   const isClockedIn = Boolean(workerRecord?.isClockedIn);
   const withinShiftWindow =
     hasShift && nowMs >= shiftStart.getTime() && nowMs <= shiftEnd.getTime();
+  const clockedOutToday = (() => {
+    const out = toDate(workerRecord?.clockedOutAt);
+    if (!out) return false;
+    return toDayKey(out) === toDayKey(new Date(nowMs));
+  })();
 
   const shiftStatusLabel = (() => {
     if (!hasShift) return "No shift assigned";
@@ -140,6 +156,12 @@ export default function WorkerDashboard() {
 
   const handleClockIn = async () => {
     if (!currentUid) return;
+    if (clockedOutToday) {
+      setClockMessage(
+        "You already clocked out today and cannot clock back in.",
+      );
+      return;
+    }
     if (!withinShiftWindow) {
       setClockMessage("Clock in is only available during your assigned shift.");
       return;
@@ -168,17 +190,34 @@ export default function WorkerDashboard() {
 
   const handleClockOut = async () => {
     if (!currentUid) return;
+    if (!isClockedIn) return;
     setClockActionLoading(true);
     setClockMessage("");
+    const clockOutDate = new Date();
     try {
+      const clockInDate = toDate(workerRecord?.clockedInAt) || clockOutDate;
+      const dayKey = toDayKey(clockInDate);
       await updateDoc(doc(db, "users", currentUid), {
         isClockedIn: false,
         clockedOutAt: serverTimestamp(),
       });
+      await setDoc(
+        doc(db, "workerAttendance", `${currentUid}_${dayKey}`),
+        {
+          organizationId,
+          workerId: currentUid,
+          workerName: userProfile?.name || "Worker",
+          dayKey,
+          clockInAt: clockInDate,
+          clockOutAt: clockOutDate,
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
       setWorkerRecord((prev) => ({
         ...(prev || {}),
         isClockedIn: false,
-        clockedOutAt: new Date(),
+        clockedOutAt: clockOutDate,
       }));
       setClockMessage("Clocked out successfully.");
     } catch (err) {
@@ -256,7 +295,10 @@ export default function WorkerDashboard() {
                   className="btn-secondary"
                   onClick={handleClockIn}
                   disabled={
-                    clockActionLoading || isClockedIn || !withinShiftWindow
+                    clockActionLoading ||
+                    isClockedIn ||
+                    !hasShift ||
+                    clockedOutToday
                   }
                 >
                   <MdLogin /> Clock In

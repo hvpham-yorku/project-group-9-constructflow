@@ -55,15 +55,27 @@ function formatShiftRange(start, end) {
   return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 }
 
+function toDayKey(date) {
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function ShiftPlannerPage() {
   const { currentUser, organizationId } = useAuth();
 
   const [workers, setWorkers] = useState([]);
   const [selectedWorkerId, setSelectedWorkerId] = useState("");
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date()));
-  const [shifts, setShifts] = useState([]);
+  const [publishedShifts, setPublishedShifts] = useState([]);
+  const [draftShifts, setDraftShifts] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
   const [savingShift, setSavingShift] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const [attendanceEntries, setAttendanceEntries] = useState([]);
   const [dragStart, setDragStart] = useState(null);
   const [dragCurrentHour, setDragCurrentHour] = useState(null);
 
@@ -114,23 +126,30 @@ export default function ShiftPlannerPage() {
           where("workerId", "==", selectedWorkerId),
         );
         const shiftSnap = await getDocs(shiftsQuery);
-        const allShifts = shiftSnap.docs.map((shiftDoc) => ({
-          id: shiftDoc.id,
-          ...shiftDoc.data(),
-        }));
+        const allShifts = shiftSnap.docs
+          .map((shiftDoc) => {
+            const raw = shiftDoc.data();
+            return {
+              id: shiftDoc.id,
+              start: toDate(raw.startAt),
+              end: toDate(raw.endAt),
+              workerId: raw.workerId,
+              workerName: raw.workerName,
+              workerRole: raw.workerRole,
+            };
+          })
+          .filter((shift) => shift.start && shift.end);
 
         const weekEnd = addDays(weekStart, 7);
-        const inWeek = allShifts.filter((shift) => {
-          const start = toDate(shift.startAt);
-          return start && start >= weekStart && start < weekEnd;
-        });
-
-        inWeek.sort(
-          (a, b) =>
-            (toDate(a.startAt)?.getTime() || 0) -
-            (toDate(b.startAt)?.getTime() || 0),
+        const inWeek = allShifts.filter(
+          (shift) => shift.start >= weekStart && shift.start < weekEnd,
         );
-        setShifts(inWeek);
+
+        inWeek.sort((a, b) => a.start.getTime() - b.start.getTime());
+        setPublishedShifts(inWeek);
+        setDraftShifts(inWeek);
+        setHasUnsavedChanges(false);
+        setSaveMessage("");
       } catch (err) {
         console.error("Failed to load shifts:", err);
       }
@@ -139,15 +158,77 @@ export default function ShiftPlannerPage() {
     loadShifts();
   }, [organizationId, selectedWorkerId, weekStart]);
 
+  useEffect(() => {
+    if (!organizationId || !selectedWorkerId) return;
+
+    const loadAttendance = async () => {
+      try {
+        const attendanceQuery = query(
+          collection(db, "workerAttendance"),
+          where("organizationId", "==", organizationId),
+          where("workerId", "==", selectedWorkerId),
+        );
+        const attendanceSnap = await getDocs(attendanceQuery);
+        const weekEnd = addDays(weekStart, 7);
+
+        const entries = attendanceSnap.docs
+          .map((recordDoc) => {
+            const raw = recordDoc.data();
+            return {
+              id: recordDoc.id,
+              dayKey: raw.dayKey || null,
+              clockInAt: toDate(raw.clockInAt),
+              clockOutAt: toDate(raw.clockOutAt),
+            };
+          })
+          .filter((entry) => entry.clockInAt)
+          .filter(
+            (entry) =>
+              entry.clockInAt >= weekStart && entry.clockInAt < weekEnd,
+          );
+
+        if (selectedWorker?.isClockedIn && selectedWorker?.clockedInAt) {
+          const liveClockIn = toDate(selectedWorker.clockedInAt);
+          if (
+            liveClockIn &&
+            liveClockIn >= weekStart &&
+            liveClockIn < weekEnd
+          ) {
+            const liveDayKey = toDayKey(liveClockIn);
+            const alreadyHasEntry = entries.some(
+              (entry) =>
+                (entry.dayKey || toDayKey(entry.clockInAt)) === liveDayKey,
+            );
+            if (!alreadyHasEntry) {
+              entries.push({
+                id: `live-${selectedWorkerId}-${liveDayKey}`,
+                dayKey: liveDayKey,
+                clockInAt: liveClockIn,
+                clockOutAt: null,
+              });
+            }
+          }
+        }
+
+        setAttendanceEntries(entries);
+      } catch (err) {
+        console.error("Failed to load attendance:", err);
+        setAttendanceEntries([]);
+      }
+    };
+
+    loadAttendance();
+  }, [organizationId, selectedWorkerId, weekStart, selectedWorker]);
+
   const shiftsByDay = useMemo(() => {
     const map = new Map();
     weekDays.forEach((day) => {
       map.set(day.toDateString(), []);
     });
 
-    shifts.forEach((shift) => {
-      const start = toDate(shift.startAt);
-      const end = toDate(shift.endAt);
+    draftShifts.forEach((shift) => {
+      const start = shift.start;
+      const end = shift.end;
       if (!start || !end) return;
       const key = new Date(
         start.getFullYear(),
@@ -159,7 +240,7 @@ export default function ShiftPlannerPage() {
     });
 
     return map;
-  }, [shifts, weekDays]);
+  }, [draftShifts, weekDays]);
 
   const draftRange = useMemo(() => {
     if (!dragStart || dragCurrentHour === null) return null;
@@ -168,15 +249,105 @@ export default function ShiftPlannerPage() {
     return { dayIndex: dragStart.dayIndex, startHour, endHour };
   }, [dragStart, dragCurrentHour]);
 
-  const deleteShift = async (shiftId) => {
-    if (!window.confirm("Delete this shift block?")) return;
+  const attendanceByDay = useMemo(() => {
+    const map = new Map();
+    weekDays.forEach((day) => {
+      map.set(day.toDateString(), []);
+    });
+
+    attendanceEntries.forEach((entry) => {
+      const start = entry.clockInAt;
+      if (!start) return;
+      const dayKey = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+      ).toDateString();
+      if (!map.has(dayKey)) return;
+
+      const end = entry.clockOutAt || new Date();
+      map.get(dayKey).push({ ...entry, start, end });
+    });
+
+    return map;
+  }, [attendanceEntries, weekDays]);
+
+  const deleteShift = (shiftId) => {
+    setDraftShifts((prev) => prev.filter((shift) => shift.id !== shiftId));
+    setHasUnsavedChanges(true);
+    setSaveMessage("");
+  };
+
+  const saveWeeklyShifts = async () => {
+    if (!organizationId || !selectedWorker || !currentUser?.uid) return;
+    setSavingShift(true);
+    setSaveMessage("");
     try {
-      await deleteDoc(doc(db, "workerShifts", shiftId));
-      setShifts((prev) => prev.filter((shift) => shift.id !== shiftId));
+      const uniqueDays = new Set();
+      for (const shift of draftShifts) {
+        const key = toDayKey(shift.start);
+        if (uniqueDays.has(key)) {
+          setSaveMessage("Only one shift per worker per day is allowed.");
+          setSavingShift(false);
+          return;
+        }
+        uniqueDays.add(key);
+      }
+
+      await Promise.all(
+        publishedShifts.map((shift) =>
+          deleteDoc(doc(db, "workerShifts", shift.id)),
+        ),
+      );
+
+      const createdShifts = [];
+      for (const shift of draftShifts) {
+        const payload = {
+          organizationId,
+          workerId: selectedWorker.uid,
+          workerName: selectedWorker.name || selectedWorker.email || "Worker",
+          workerRole: selectedWorker.role || null,
+          startAt: shift.start,
+          endAt: shift.end,
+          createdBy: currentUser.uid,
+          createdAt: serverTimestamp(),
+        };
+        const docRef = await addDoc(collection(db, "workerShifts"), payload);
+        createdShifts.push({
+          id: docRef.id,
+          start: shift.start,
+          end: shift.end,
+          workerId: payload.workerId,
+          workerName: payload.workerName,
+          workerRole: payload.workerRole,
+        });
+      }
+
+      const now = Date.now();
+      const sorted = [...createdShifts].sort(
+        (a, b) => a.start.getTime() - b.start.getTime(),
+      );
+      const active = sorted.find(
+        (shift) => now >= shift.start.getTime() && now <= shift.end.getTime(),
+      );
+      const upcoming = sorted.find((shift) => now < shift.start.getTime());
+      const fallback = sorted[sorted.length - 1] || null;
+      const representative = active || upcoming || fallback;
+
+      await updateDoc(doc(db, "users", selectedWorker.uid), {
+        shiftStartAt: representative ? representative.start : null,
+        shiftEndAt: representative ? representative.end : null,
+      });
+
+      setPublishedShifts(createdShifts);
+      setDraftShifts(createdShifts);
+      setHasUnsavedChanges(false);
+      setSaveMessage("Shift plan saved. Workers now see this final version.");
     } catch (err) {
-      console.error("Failed to delete shift:", err);
-      alert("Failed to delete shift block.");
+      console.error("Failed to save shifts:", err);
+      setSaveMessage("Failed to save shifts.");
     }
+    setSavingShift(false);
   };
 
   useEffect(() => {
@@ -194,50 +365,34 @@ export default function ShiftPlannerPage() {
         return;
       }
 
-      setSavingShift(true);
-      try {
-        const day = weekDays[draftRange.dayIndex];
-        const startDate = new Date(day);
-        startDate.setHours(draftRange.startHour, 0, 0, 0);
-        const endDate = new Date(day);
-        endDate.setHours(draftRange.endHour, 0, 0, 0);
+      const day = weekDays[draftRange.dayIndex];
+      const startDate = new Date(day);
+      startDate.setHours(draftRange.startHour, 0, 0, 0);
+      const endDate = new Date(day);
+      endDate.setHours(draftRange.endHour, 0, 0, 0);
 
-        await addDoc(collection(db, "workerShifts"), {
-          organizationId,
-          workerId: selectedWorker.uid,
-          workerName: selectedWorker.name || selectedWorker.email || "Worker",
-          workerRole: selectedWorker.role || null,
-          startAt: startDate,
-          endAt: endDate,
-          createdBy: currentUser.uid,
-          createdAt: serverTimestamp(),
-        });
-
-        await updateDoc(doc(db, "users", selectedWorker.uid), {
-          shiftStartAt: startDate,
-          shiftEndAt: endDate,
-        });
-
-        const refreshed = await getDocs(
-          query(
-            collection(db, "workerShifts"),
-            where("organizationId", "==", organizationId),
-            where("workerId", "==", selectedWorker.uid),
-          ),
-        );
-        const weekEnd = addDays(weekStart, 7);
-        const inWeek = refreshed.docs
-          .map((shiftDoc) => ({ id: shiftDoc.id, ...shiftDoc.data() }))
-          .filter((shift) => {
-            const start = toDate(shift.startAt);
-            return start && start >= weekStart && start < weekEnd;
-          });
-        setShifts(inWeek);
-      } catch (err) {
-        console.error("Failed to create shift:", err);
-        alert("Failed to create shift block.");
+      const dayKey = toDayKey(startDate);
+      const alreadyHasShiftForDay = draftShifts.some(
+        (shift) => toDayKey(shift.start) === dayKey,
+      );
+      if (alreadyHasShiftForDay) {
+        alert("Only one shift per worker per day is allowed.");
+        setDragStart(null);
+        setDragCurrentHour(null);
+        return;
       }
-      setSavingShift(false);
+
+      const newDraftShift = {
+        id: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        start: startDate,
+        end: endDate,
+        workerId: selectedWorker.uid,
+        workerName: selectedWorker.name || selectedWorker.email || "Worker",
+        workerRole: selectedWorker.role || null,
+      };
+      setDraftShifts((prev) => [...prev, newDraftShift]);
+      setHasUnsavedChanges(true);
+      setSaveMessage("");
       setDragStart(null);
       setDragCurrentHour(null);
     };
@@ -250,8 +405,8 @@ export default function ShiftPlannerPage() {
     draftRange,
     organizationId,
     selectedWorker,
+    draftShifts,
     weekDays,
-    weekStart,
   ]);
 
   return (
@@ -270,6 +425,13 @@ export default function ShiftPlannerPage() {
               </p>
             </div>
             <div className="week-nav">
+              <button
+                className="btn-primary"
+                onClick={saveWeeklyShifts}
+                disabled={savingShift || !selectedWorker || !hasUnsavedChanges}
+              >
+                {savingShift ? "Saving..." : "Save Shifts"}
+              </button>
               <button
                 className="btn-secondary"
                 onClick={() => setWeekStart((prev) => addDays(prev, -7))}
@@ -290,6 +452,16 @@ export default function ShiftPlannerPage() {
               </button>
             </div>
           </div>
+
+          {(hasUnsavedChanges || saveMessage) && (
+            <p
+              className={`shift-save-note${hasUnsavedChanges ? " pending" : ""}`}
+            >
+              {hasUnsavedChanges
+                ? "You have unsaved shift changes. Workers still see the last saved plan."
+                : saveMessage}
+            </p>
+          )}
 
           <div className="shift-planner-layout">
             <div className="shift-calendar-wrap">
@@ -329,6 +501,8 @@ export default function ShiftPlannerPage() {
                       {weekDays.map((day, dayIndex) => {
                         const dayShifts =
                           shiftsByDay.get(day.toDateString()) || [];
+                        const dayAttendance =
+                          attendanceByDay.get(day.toDateString()) || [];
                         return (
                           <div key={day.toDateString()} className="day-col">
                             {HOURS.map((hour) => {
@@ -390,6 +564,37 @@ export default function ShiftPlannerPage() {
                                   >
                                     x
                                   </button>
+                                </div>
+                              );
+                            })}
+
+                            {dayAttendance.map((entry) => {
+                              const startDecimal =
+                                entry.start.getHours() +
+                                entry.start.getMinutes() / 60;
+                              const endDate = entry.end;
+                              const endDecimal =
+                                endDate.getHours() + endDate.getMinutes() / 60;
+                              const top = startDecimal * 48;
+                              const height = Math.max(
+                                12,
+                                (endDecimal - startDecimal) * 48,
+                              );
+
+                              return (
+                                <div
+                                  key={entry.id}
+                                  className="shift-attendance-overlay"
+                                  style={{
+                                    top: `${top}px`,
+                                    height: `${height}px`,
+                                  }}
+                                >
+                                  <span className="shift-attendance-time">
+                                    {entry.clockOutAt
+                                      ? `Attended ${formatShiftRange(entry.start, entry.end)}`
+                                      : `In shift since ${entry.start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                                  </span>
                                 </div>
                               );
                             })}

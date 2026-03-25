@@ -42,6 +42,8 @@ const ROLE_LABELS = {
   manager: "Manager",
 };
 
+const INITIAL_NOW_MS = Date.now();
+
 function toDate(value) {
   if (!value) return null;
   if (typeof value?.toDate === "function") return value.toDate();
@@ -77,7 +79,7 @@ export default function WorkersPage() {
   const [shiftStartValue, setShiftStartValue] = useState("");
   const [shiftEndValue, setShiftEndValue] = useState("");
   const [shiftSaving, setShiftSaving] = useState(false);
-  const [nowMs, setNowMs] = useState(0);
+  const [nowMs, setNowMs] = useState(INITIAL_NOW_MS);
 
   useEffect(() => {
     const timer = setInterval(() => setNowMs(Date.now()), 30000);
