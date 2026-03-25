@@ -12,11 +12,22 @@ import {
   MdCheckCircle,
   MdSchedule,
   MdArrowForward,
+  MdLogin,
+  MdLogout,
 } from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import "../styles/Dashboard.css";
 
@@ -30,6 +41,19 @@ const ROLE_COLORS = {
   plumber: { bg: "#e0e7ff", fg: "#be123c" },
 };
 
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value?.toDate === "function") return value.toDate();
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatDateTime(value) {
+  const date = toDate(value);
+  if (!date) return "--";
+  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+
 export default function WorkerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
@@ -37,14 +61,28 @@ export default function WorkerDashboard() {
   const [tasks, setTasks] = useState([]); // { id, title, dueDate, projectId, completed }
   const [projectNames, setProjectNames] = useState({}); // { [projectId]: projectName }
   const [loadingData, setLoadingData] = useState(true);
+  const [workerRecord, setWorkerRecord] = useState(null);
+  const [clockActionLoading, setClockActionLoading] = useState(false);
+  const [clockMessage, setClockMessage] = useState("");
+  const [nowMs, setNowMs] = useState(0);
 
   const currentUid = currentUser?.uid || null;
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (!currentUid || !organizationId) return;
     const load = async () => {
       setLoadingData(true);
       try {
+        const workerSnap = await getDoc(doc(db, "users", currentUid));
+        if (workerSnap.exists()) {
+          setWorkerRecord({ uid: workerSnap.id, ...workerSnap.data() });
+        }
+
         const projectQ = query(
           collection(db, "projects"),
           where("organizationId", "==", organizationId),
@@ -83,6 +121,72 @@ export default function WorkerDashboard() {
     };
     load();
   }, [currentUid, organizationId]);
+
+  const shiftStart = toDate(workerRecord?.shiftStartAt);
+  const shiftEnd = toDate(workerRecord?.shiftEndAt);
+  const hasShift = Boolean(shiftStart && shiftEnd && shiftEnd > shiftStart);
+  const isClockedIn = Boolean(workerRecord?.isClockedIn);
+  const withinShiftWindow =
+    hasShift && nowMs >= shiftStart.getTime() && nowMs <= shiftEnd.getTime();
+
+  const shiftStatusLabel = (() => {
+    if (!hasShift) return "No shift assigned";
+    if (withinShiftWindow && isClockedIn) return "In shift now";
+    if (withinShiftWindow) return "Shift active - clock in required";
+    if (nowMs < shiftStart.getTime()) return "Upcoming shift";
+    if (isClockedIn) return "Clocked in (past shift end)";
+    return "Shift ended";
+  })();
+
+  const handleClockIn = async () => {
+    if (!currentUid) return;
+    if (!withinShiftWindow) {
+      setClockMessage("Clock in is only available during your assigned shift.");
+      return;
+    }
+    setClockActionLoading(true);
+    setClockMessage("");
+    try {
+      await updateDoc(doc(db, "users", currentUid), {
+        isClockedIn: true,
+        clockedInAt: serverTimestamp(),
+        clockedOutAt: null,
+      });
+      setWorkerRecord((prev) => ({
+        ...(prev || {}),
+        isClockedIn: true,
+        clockedInAt: new Date(),
+        clockedOutAt: null,
+      }));
+      setClockMessage("Clocked in successfully.");
+    } catch (err) {
+      console.error("Clock in failed:", err);
+      setClockMessage("Failed to clock in.");
+    }
+    setClockActionLoading(false);
+  };
+
+  const handleClockOut = async () => {
+    if (!currentUid) return;
+    setClockActionLoading(true);
+    setClockMessage("");
+    try {
+      await updateDoc(doc(db, "users", currentUid), {
+        isClockedIn: false,
+        clockedOutAt: serverTimestamp(),
+      });
+      setWorkerRecord((prev) => ({
+        ...(prev || {}),
+        isClockedIn: false,
+        clockedOutAt: new Date(),
+      }));
+      setClockMessage("Clocked out successfully.");
+    } catch (err) {
+      console.error("Clock out failed:", err);
+      setClockMessage("Failed to clock out.");
+    }
+    setClockActionLoading(false);
+  };
 
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter((task) => task.completed).length;
@@ -129,6 +233,44 @@ export default function WorkerDashboard() {
                 </span>
               </div>
             </div>
+
+            <div className="clock-box">
+              <span className="clock-label">Shift Status</span>
+              <span className={`clock-status${isClockedIn ? " in" : " out"}`}>
+                {shiftStatusLabel}
+              </span>
+              <p className="clock-window">
+                Shift:{" "}
+                {hasShift
+                  ? `${formatDateTime(shiftStart)} - ${formatDateTime(shiftEnd)}`
+                  : "Not assigned"}
+              </p>
+              <p className="clock-window">
+                Clock in: {formatDateTime(workerRecord?.clockedInAt)}
+              </p>
+              <p className="clock-window">
+                Clock out: {formatDateTime(workerRecord?.clockedOutAt)}
+              </p>
+              <div className="clock-actions">
+                <button
+                  className="btn-secondary"
+                  onClick={handleClockIn}
+                  disabled={
+                    clockActionLoading || isClockedIn || !withinShiftWindow
+                  }
+                >
+                  <MdLogin /> Clock In
+                </button>
+                <button
+                  className="btn-secondary"
+                  onClick={handleClockOut}
+                  disabled={clockActionLoading || !isClockedIn}
+                >
+                  <MdLogout /> Clock Out
+                </button>
+              </div>
+              {clockMessage && <p className="clock-feedback">{clockMessage}</p>}
+            </div>
           </div>
 
           {/* ── Stats ── */}
@@ -139,9 +281,7 @@ export default function WorkerDashboard() {
               </div>
               <div>
                 <p className="stat-label">Assigned</p>
-                <p className="stat-number">
-                  {loadingData ? "—" : totalTasks}
-                </p>
+                <p className="stat-number">{loadingData ? "—" : totalTasks}</p>
               </div>
             </div>
             <div className="stat-card">
@@ -150,9 +290,7 @@ export default function WorkerDashboard() {
               </div>
               <div>
                 <p className="stat-label">Completed</p>
-                <p className="stat-number">
-                  {loadingData ? "—" : doneTasks}
-                </p>
+                <p className="stat-number">{loadingData ? "—" : doneTasks}</p>
               </div>
             </div>
             <div className="stat-card">
@@ -188,9 +326,7 @@ export default function WorkerDashboard() {
               </div>
             ) : tasks.length === 0 ? (
               <div className="empty-state">
-                <p>
-                  No tasks yet. Ask your manager to assign work to you.
-                </p>
+                <p>No tasks yet. Ask your manager to assign work to you.</p>
               </div>
             ) : (
               <div className="recent-projects-list">
@@ -201,7 +337,9 @@ export default function WorkerDashboard() {
                       key={task.id}
                       className="recent-project-row"
                       onClick={() =>
-                        navigate(`/projects/${task.projectId}/tasks/${task.id}/blueprints`)
+                        navigate(
+                          `/projects/${task.projectId}/tasks/${task.id}/blueprints`,
+                        )
                       }
                     >
                       <span className="rp-icon">

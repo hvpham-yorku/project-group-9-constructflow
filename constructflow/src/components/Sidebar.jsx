@@ -15,6 +15,7 @@ import {
   MdDashboard,
   MdFolder,
   MdPeople,
+  MdCalendarMonth,
   // MdBarChart,
   MdSettings,
   MdLogout,
@@ -25,6 +26,7 @@ const MANAGER_LINKS = [
   { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
   { name: "Projects", icon: MdFolder, path: "/projects" },
   { name: "Workers", icon: MdPeople, path: "/workers" },
+  { name: "Shifts", icon: MdCalendarMonth, path: "/shifts" },
   // { name: "Reports", icon: MdBarChart, path: "/reports" },
   { name: "Settings", icon: MdSettings, path: "/settings" },
 ];

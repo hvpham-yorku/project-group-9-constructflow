@@ -19,6 +19,7 @@ import BlueprintViewer from "./pages/BlueprintViewer";
 import ProjectsPage from "./pages/ProjectsPage";
 import TasksPage from "./pages/TasksPage";
 import WorkersPage from "./pages/WorkersPage";
+import ShiftPlannerPage from "./pages/ShiftPlannerPage";
 // import ReportsPage from "./pages/ReportsPage"; // Temporarily disabled
 import SettingsPage from "./pages/SettingsPage";
 import "./App.css";
@@ -73,6 +74,7 @@ function DashboardRouter() {
           element={<BlueprintViewer />}
         />
         <Route path="/workers" element={<WorkersPage />} />
+        <Route path="/shifts" element={<ShiftPlannerPage />} />
         {/* <Route path="/reports" element={<ReportsPage />} /> */}
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
