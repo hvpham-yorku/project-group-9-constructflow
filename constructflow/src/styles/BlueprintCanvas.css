@@ -95,7 +95,6 @@
   width: auto;
   height: auto;
   transform-origin: center center;
-  transition: transform 0.08s ease-out;
   pointer-events: none;
   user-select: none;
 }
@@ -145,19 +144,25 @@
   filter: drop-shadow(0 0 5px rgba(255, 200, 0, 0.95));
 }
 
-/* Pipe = red */
+/* Hot water pipe = red */
+.blueprint-object.hot_pipe,
 .blueprint-object.pipe {
   stroke: #dc2626;
 }
 
-/* Connection = blue */
-.blueprint-object.connection {
+/* Cold water pipe = blue */
+.blueprint-object.cold_pipe {
   stroke: #2563eb;
 }
 
-/* Worker's own assigned element — yellow (overrides type color) */
+/* Electrical wire = purple */
+.blueprint-object.connection {
+  stroke: #7c3aed;
+}
+
+/* Worker's own assigned element — keep type color and add subtle glow */
 .blueprint-object.own-element {
-  stroke: #eab308;
+  filter: drop-shadow(0 0 3px rgba(234, 179, 8, 0.9));
 }
 
 /*
@@ -221,4 +226,29 @@
   stroke-width: 1.6;
   pointer-events: none;
   user-select: none;
+}
+
+.fixture-area {
+  fill: rgba(15, 118, 110, 0.16);
+  stroke: #0f766e;
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.fixture-area.selected {
+  fill: rgba(15, 118, 110, 0.22);
+  stroke-width: 2.5;
+}
+
+.fixture-area.preview {
+  pointer-events: none;
+  fill: rgba(15, 118, 110, 0.12);
+}
+
+.fixture-connection-point {
+  fill: #0f766e;
+  stroke: #ffffff;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
 }

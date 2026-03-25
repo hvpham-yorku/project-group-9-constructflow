@@ -17,6 +17,7 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 import WorkerDashboard from "./pages/WorkerDashboard";
 import BlueprintViewer from "./pages/BlueprintViewer";
 import ProjectsPage from "./pages/ProjectsPage";
+import TasksPage from "./pages/TasksPage";
 import WorkersPage from "./pages/WorkersPage";
 // import ReportsPage from "./pages/ReportsPage"; // Temporarily disabled
 import SettingsPage from "./pages/SettingsPage";
@@ -62,6 +63,11 @@ function DashboardRouter() {
       <Routes>
         <Route path="/dashboard" element={<ManagerDashboard />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/:projectId/tasks" element={<TasksPage />} />
+        <Route
+          path="/projects/:projectId/tasks/:taskId/blueprints"
+          element={<BlueprintViewer />}
+        />
         <Route
           path="/projects/:projectId/blueprints"
           element={<BlueprintViewer />}
@@ -80,6 +86,11 @@ function DashboardRouter() {
       <Routes>
         <Route path="/dashboard" element={<WorkerDashboard />} />
         <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="/projects/:projectId/tasks" element={<TasksPage />} />
+        <Route
+          path="/projects/:projectId/tasks/:taskId/blueprints"
+          element={<BlueprintViewer />}
+        />
         <Route
           path="/projects/:projectId/blueprints"
           element={<BlueprintViewer />}

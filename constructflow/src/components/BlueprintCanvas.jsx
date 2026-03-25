@@ -19,6 +19,7 @@ function BlueprintCanvas({
   objects = [],
   activeObjectId,
   onPathUpdate,
+  onObjectUpdate,
   onFinishDrawing,
   onObjectSelected,
   selectedObjectId,
@@ -33,6 +34,7 @@ function BlueprintCanvas({
   const [currentPoints, setCurrentPoints] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [mousePos, setMousePos] = useState(null);
+  const [fixtureDraftRect, setFixtureDraftRect] = useState(null);
 
   // ── Drag-to-reposition state ──────────────────────────────────────────────
   const [dragging, setDragging] = useState(false);
@@ -48,6 +50,46 @@ function BlueprintCanvas({
   const imgRef = useRef(null);
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 4;
+
+  const normalizeRect = useCallback((start, end) => {
+    const left = Math.min(start.x, end.x);
+    const top = Math.min(start.y, end.y);
+    return {
+      x: left,
+      y: top,
+      width: Math.abs(end.x - start.x),
+      height: Math.abs(end.y - start.y),
+    };
+  }, []);
+
+  const getFixtureConnectionPoints = useCallback((rect, connectionCount = 1) => {
+    if (!rect || !rect.width || !rect.height) return [];
+    const centerX = rect.x + rect.width / 2;
+    const centerY = rect.y + rect.height / 2;
+    const spread = Math.max(8, Math.min(rect.width, rect.height) * 0.2);
+    const count = Math.min(4, Math.max(1, Number(connectionCount) || 1));
+
+    if (count === 1) return [{ x: centerX, y: centerY }];
+    if (count === 2) {
+      return [
+        { x: centerX - spread, y: centerY },
+        { x: centerX + spread, y: centerY },
+      ];
+    }
+    if (count === 3) {
+      return [
+        { x: centerX, y: centerY - spread },
+        { x: centerX - spread, y: centerY + spread },
+        { x: centerX + spread, y: centerY + spread },
+      ];
+    }
+    return [
+      { x: centerX, y: centerY - spread },
+      { x: centerX + spread, y: centerY },
+      { x: centerX, y: centerY + spread },
+      { x: centerX - spread, y: centerY },
+    ];
+  }, []);
 
   const clampZoom = useCallback(
     (value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)),
@@ -98,7 +140,10 @@ function BlueprintCanvas({
   }, [imageUrl]);
 
   useEffect(() => {
-    measureImage();
+    const rafId = requestAnimationFrame(() => {
+      measureImage();
+    });
+    return () => cancelAnimationFrame(rafId);
   }, [zoom, measureImage]);
 
   // ── Reset drawing state when active element changes ───────────────────────
@@ -106,6 +151,7 @@ function BlueprintCanvas({
     setCurrentPoints([]);
     setRedoStack([]);
     setMousePos(null);
+    setFixtureDraftRect(null);
   }, [activeObjectId]);
 
   // ── Keyboard undo / redo ──────────────────────────────────────────────────
@@ -212,12 +258,54 @@ function BlueprintCanvas({
   );
 
   const activeType = objects.find((o) => o.id === activeObjectId)?.type || "";
+  const isDrawingFixtureArea = activeType === "fixture_area";
+
+  const fixtureSnapPoints = useMemo(
+    () =>
+      objects
+        .filter((obj) => obj.type === "fixture_area" && obj.rect)
+        .flatMap((obj) =>
+          getFixtureConnectionPoints(obj.rect, obj.connectionCount || 1),
+        ),
+    [objects, getFixtureConnectionPoints],
+  );
+
+  const snapToFixturePoint = useCallback(
+    (point) => {
+      if (!imgRect || !naturalSize || fixtureSnapPoints.length === 0) return point;
+      const pixelToNatural = naturalSize.w / imgRect.width;
+      const threshold = 12 * pixelToNatural;
+      let nearest = null;
+      let nearestDist = Infinity;
+
+      fixtureSnapPoints.forEach((candidate) => {
+        const dx = candidate.x - point.x;
+        const dy = candidate.y - point.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearest = candidate;
+        }
+      });
+
+      return nearest && nearestDist <= threshold ? nearest : point;
+    },
+    [fixtureSnapPoints, imgRect, naturalSize],
+  );
 
   // ── SVG drawing handlers ──────────────────────────────────────────────────
   const handleSvgMouseMove = (e) => {
+    const raw = clientToSvg(e.clientX, e.clientY);
+
+    if (isDrawingFixtureArea && fixtureDraftRect?.start) {
+      const rect = normalizeRect(fixtureDraftRect.start, raw);
+      setFixtureDraftRect((prev) => ({ ...prev, current: raw, rect }));
+    }
+
     if (activeObjectId) {
-      const raw = clientToSvg(e.clientX, e.clientY);
-      setMousePos(shiftPressed ? snapToGrid(raw) : raw);
+      const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
+      const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "connection"].includes(activeType);
+      setMousePos(shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid);
     }
     if (dragging) {
       handleDragMove(e);
@@ -226,14 +314,18 @@ function BlueprintCanvas({
 
   const handleSvgClick = (e) => {
     if (!activeObjectId || dragging) return;
+    if (isDrawingFixtureArea) return;
     const raw = clientToSvg(e.clientX, e.clientY);
-    const pos = shiftPressed ? snapToGrid(raw) : raw;
+    const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
+    const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "connection"].includes(activeType);
+    const pos = shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid;
     setCurrentPoints((prev) => [...prev, pos]);
     setRedoStack([]);
   };
 
   const handleSvgDoubleClick = (e) => {
     if (!activeObjectId) return;
+    if (isDrawingFixtureArea) return;
     e.preventDefault();
     e.stopPropagation();
 
@@ -258,6 +350,41 @@ function BlueprintCanvas({
     setCurrentPoints([]);
     setRedoStack([]);
     setMousePos(null);
+  };
+
+  const handleSvgMouseDown = (e) => {
+    if (!activeObjectId || !isDrawingFixtureArea) return;
+    const start = clientToSvg(e.clientX, e.clientY);
+    setFixtureDraftRect({
+      start,
+      current: start,
+      rect: { x: start.x, y: start.y, width: 0, height: 0 },
+    });
+  };
+
+  const handleSvgMouseUp = (e) => {
+    if (!activeObjectId || !isDrawingFixtureArea || !fixtureDraftRect?.start) {
+      handleDragEnd();
+      return;
+    }
+
+    const end = clientToSvg(e.clientX, e.clientY);
+    const rect = normalizeRect(fixtureDraftRect.start, end);
+    setFixtureDraftRect(null);
+
+    if (rect.width < 4 || rect.height < 4) {
+      return;
+    }
+
+    if (onObjectUpdate) {
+      onObjectUpdate(activeObjectId, {
+        rect,
+        fixtureName: "Fixture",
+        connectionCount: 1,
+      });
+    }
+
+    if (onFinishDrawing) onFinishDrawing(activeObjectId);
   };
 
   // ── Drag-to-reposition handlers ───────────────────────────────────────────
@@ -396,10 +523,12 @@ function BlueprintCanvas({
           preserveAspectRatio="none"
           onClick={handleSvgClick}
           onDoubleClick={handleSvgDoubleClick}
+          onMouseDown={handleSvgMouseDown}
           onMouseMove={handleSvgMouseMove}
-          onMouseUp={handleDragEnd}
+          onMouseUp={handleSvgMouseUp}
           onMouseLeave={(e) => {
             setMousePos(null);
+            setFixtureDraftRect(null);
             if (dragging) handleDragEnd();
           }}
         >
@@ -433,6 +562,39 @@ function BlueprintCanvas({
             const isSelected = obj.id === selectedObjectId;
             // Guard: isOwn is only true when a real uid matches AND obj is actually assigned
             const isOwn = obj.isOwn === true;
+
+            if (obj.type === "fixture_area" && obj.rect) {
+              const points = getFixtureConnectionPoints(
+                obj.rect,
+                obj.connectionCount || 1,
+              );
+              return (
+                <g key={obj.id}>
+                  <rect
+                    x={obj.rect.x}
+                    y={obj.rect.y}
+                    width={obj.rect.width}
+                    height={obj.rect.height}
+                    className={`fixture-area${isSelected ? " selected" : ""}`}
+                    onClick={(e) => {
+                      if (activeObjectId || dragging) return;
+                      e.stopPropagation();
+                      onObjectSelected && onObjectSelected(obj);
+                    }}
+                  />
+                  {points.map((point, index) => (
+                    <circle
+                      key={`${obj.id}-fixture-conn-${index}`}
+                      cx={point.x}
+                      cy={point.y}
+                      r={5}
+                      className="fixture-connection-point"
+                    />
+                  ))}
+                </g>
+              );
+            }
+
             const d = pointsToPath(obj.pathPoints);
             return (
               <g key={obj.id}>
@@ -491,6 +653,16 @@ function BlueprintCanvas({
               </g>
             );
           })}
+
+          {isDrawingFixtureArea && fixtureDraftRect?.rect && (
+            <rect
+              x={fixtureDraftRect.rect.x}
+              y={fixtureDraftRect.rect.y}
+              width={fixtureDraftRect.rect.width}
+              height={fixtureDraftRect.rect.height}
+              className="fixture-area preview"
+            />
+          )}
 
           {/* Live preview while drawing */}
           {activeObjectId && currentPoints.length > 0 && (

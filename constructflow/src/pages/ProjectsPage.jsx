@@ -3,7 +3,7 @@
  *
  * Lists all projects for the current user's organisation.
  * Manager can create / delete projects.
- * Clicking a project navigates to its Blueprint Viewer.
+ * Clicking a project navigates to its Tasks page.
  * Data is stored in Firestore: /projects/{id}
  */
 
@@ -63,7 +63,25 @@ export default function ProjectsPage() {
         where("organizationId", "==", organizationId),
       );
       const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      if (!isManager && userProfile?.uid) {
+        const taskQ = query(
+          collection(db, "tasks"),
+          where("assignedWorkerId", "==", userProfile.uid),
+        );
+        const taskSnap = await getDocs(taskQ);
+        const assignedProjectIds = new Set(
+          taskSnap.docs
+            .map((d) => d.data())
+            .filter((task) => task.organizationId === organizationId)
+            .map((task) => task.projectId)
+            .filter(Boolean),
+        );
+
+        list = list.filter((project) => assignedProjectIds.has(project.id));
+      }
+
       list.sort(
         (a, b) =>
           (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0),
@@ -77,7 +95,7 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
-  }, [organizationId]);
+  }, [organizationId, isManager, userProfile?.uid]);
 
   // ── Create project ──────────────────────────────────────────────────────
   const handleCreate = async (e) => {
@@ -204,9 +222,7 @@ export default function ProjectsPage() {
                   <div
                     key={project.id}
                     className="project-card"
-                    onClick={() =>
-                      navigate(`/projects/${project.id}/blueprints`)
-                    }
+                    onClick={() => navigate(`/projects/${project.id}/tasks`)}
                   >
                     <div className="project-card-top">
                       <div className="project-card-icon">
@@ -234,7 +250,7 @@ export default function ProjectsPage() {
                           className="btn-view"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/projects/${project.id}/blueprints`);
+                            navigate(`/projects/${project.id}/tasks`);
                           }}
                         >
                           Open <MdArrowForward />

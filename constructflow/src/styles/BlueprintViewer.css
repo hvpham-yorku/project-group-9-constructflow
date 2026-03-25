@@ -110,15 +110,39 @@
 }
 
 /* Draw buttons */
-.pipe-btn {
+.hot-pipe-btn {
   border-color: #dc2626 !important;
   color: #dc2626 !important;
 }
-.pipe-btn:hover:not(:disabled) {
+.hot-pipe-btn:hover:not(:disabled) {
   background: #fef2f2 !important;
 }
-.pipe-btn.active {
+.hot-pipe-btn.active {
   background: #dc2626 !important;
+  color: white !important;
+}
+
+.cold-pipe-btn {
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+}
+.cold-pipe-btn:hover:not(:disabled) {
+  background: #eff6ff !important;
+}
+.cold-pipe-btn.active {
+  background: #2563eb !important;
+  color: white !important;
+}
+
+.fixture-area-btn {
+  border-color: #0f766e !important;
+  color: #0f766e !important;
+}
+.fixture-area-btn:hover:not(:disabled) {
+  background: #f0fdfa !important;
+}
+.fixture-area-btn.active {
+  background: #0f766e !important;
   color: white !important;
 }
 
@@ -146,14 +170,35 @@
 }
 
 .connection-btn {
-  border-color: #2563eb !important;
-  color: #2563eb !important;
+  border-color: #7c3aed !important;
+  color: #7c3aed !important;
 }
 .connection-btn:hover:not(:disabled) {
-  background: #eff6ff !important;
+  background: #f5f3ff !important;
 }
 .connection-btn.active {
-  background: #2563eb !important;
+  background: #7c3aed !important;
+  color: white !important;
+}
+
+.valve-btn,
+.join-2-btn,
+.join-3-btn,
+.join-4-btn {
+  border-color: #0f766e !important;
+  color: #0f766e !important;
+}
+.valve-btn:hover:not(:disabled),
+.join-2-btn:hover:not(:disabled),
+.join-3-btn:hover:not(:disabled),
+.join-4-btn:hover:not(:disabled) {
+  background: #f0fdfa !important;
+}
+.valve-btn.active,
+.join-2-btn.active,
+.join-3-btn.active,
+.join-4-btn.active {
+  background: #0f766e !important;
   color: white !important;
 }
 
@@ -176,13 +221,23 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
-.pipe-icon {
+.hot-pipe-icon {
   background: #dc2626;
 }
-.connection-icon {
+.cold-pipe-icon {
   background: #2563eb;
 }
-.fixture-icon {
+.connection-icon {
+  background: #7c3aed;
+}
+.fixture-area-icon {
+  background: #0f766e;
+  border-radius: 2px;
+}
+.valve-icon,
+.join-2-icon,
+.join-3-icon,
+.join-4-icon {
   background: #0f766e;
 }
 
@@ -452,11 +507,18 @@
   border-left-width: 3px;
   flex-shrink: 0;
 }
+.section-card.hot_pipe,
 .section-card.pipe {
   border-left-color: #dc2626;
 }
-.section-card.connection {
+.section-card.cold_pipe {
   border-left-color: #2563eb;
+}
+.section-card.fixture_area {
+  border-left-color: #0f766e;
+}
+.section-card.connection {
+  border-left-color: #7c3aed;
 }
 .section-card.own-element {
   border-left-color: #eab308;
@@ -498,13 +560,24 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+.type-dot.hot_pipe,
 .type-dot.pipe {
   background: #dc2626;
 }
-.type-dot.connection {
+.type-dot.cold_pipe {
   background: #2563eb;
 }
+.type-dot.fixture_area {
+  background: #0f766e;
+}
+.type-dot.connection {
+  background: #7c3aed;
+}
+.type-dot.hot_pipe.completed,
 .type-dot.pipe.completed {
+  background: #166534;
+}
+.type-dot.cold_pipe.completed {
   background: #166534;
 }
 .type-dot.connection.completed {
@@ -613,6 +686,31 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+
+.fixture-config {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fixture-name-input,
+.fixture-conn-select {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.fixture-readonly-name {
+  margin: 0;
+  color: #475569;
+  font-size: 12px;
 }
 
 .point-row {

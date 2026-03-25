@@ -1,8 +1,8 @@
 /**
  * WorkerDashboard.jsx
  *
- * Dashboard for trade workers. Shows all blueprints where they have assigned elements,
- * element counts, and completion stats. Clicking a blueprint row navigates to it.
+ * Dashboard for trade workers. Shows tasks assigned to the worker,
+ * task counts, and completion stats. Clicking a task row navigates to its blueprint.
  */
 
 import { useState, useEffect } from "react";
@@ -11,7 +11,6 @@ import {
   MdAssignment,
   MdCheckCircle,
   MdSchedule,
-  MdDesignServices,
   MdArrowForward,
 } from "react-icons/md";
 import Header from "../components/Header";
@@ -35,7 +34,8 @@ export default function WorkerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
   const navigate = useNavigate();
 
-  const [assignments, setAssignments] = useState([]); // { blueprintId, blueprintName, projectId, elements: [...] }
+  const [tasks, setTasks] = useState([]); // { id, title, dueDate, projectId, completed }
+  const [projectNames, setProjectNames] = useState({}); // { [projectId]: projectName }
   const [loadingData, setLoadingData] = useState(true);
 
   const currentUid = currentUser?.uid || null;
@@ -45,34 +45,37 @@ export default function WorkerDashboard() {
     const load = async () => {
       setLoadingData(true);
       try {
-        // Fetch all blueprints in the org
-        const bpQ = query(
-          collection(db, "blueprints"),
+        const projectQ = query(
+          collection(db, "projects"),
           where("organizationId", "==", organizationId),
         );
-        const bpSnap = await getDocs(bpQ);
-
-        const result = [];
-
-        bpSnap.forEach((bpDoc) => {
-          const bp = { id: bpDoc.id, ...bpDoc.data() };
-          const objects = Object.entries(bp.objects || {}).map(([id, obj]) => ({
-            id,
-            ...obj,
-          }));
-          const mine = objects.filter((o) => o.assignedTo === currentUid);
-          if (mine.length > 0) {
-            result.push({
-              blueprintId: bp.id,
-              blueprintName: bp.name,
-              projectId: bp.projectId,
-              elements: mine,
-            });
+        const projectSnap = await getDocs(projectQ);
+        const nameMap = {};
+        const activeProjectIds = new Set();
+        projectSnap.forEach((docSnap) => {
+          const projectData = docSnap.data() || {};
+          nameMap[docSnap.id] = projectData.name || "Project";
+          const projectStatus = projectData.status || "active";
+          if (projectStatus === "active") {
+            activeProjectIds.add(docSnap.id);
           }
         });
+        setProjectNames(nameMap);
 
-        result.sort((a, b) => b.elements.length - a.elements.length);
-        setAssignments(result);
+        const taskQ = query(
+          collection(db, "tasks"),
+          where("assignedWorkerId", "==", currentUid),
+        );
+        const taskSnap = await getDocs(taskQ);
+        const taskList = taskSnap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          .filter(
+            (task) =>
+              task.organizationId === organizationId &&
+              activeProjectIds.has(task.projectId),
+          )
+          .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
+        setTasks(taskList);
       } catch (err) {
         console.error("Worker dashboard load:", err);
       }
@@ -81,12 +84,9 @@ export default function WorkerDashboard() {
     load();
   }, [currentUid, organizationId]);
 
-  const totalElements = assignments.reduce((s, a) => s + a.elements.length, 0);
-  const doneElements = assignments.reduce(
-    (s, a) => s + a.elements.filter((e) => e.completed).length,
-    0,
-  );
-  const pendingElements = totalElements - doneElements;
+  const totalTasks = tasks.length;
+  const doneTasks = tasks.filter((task) => task.completed).length;
+  const pendingTasks = totalTasks - doneTasks;
 
   const roleLabel =
     ROLE_LABELS[userProfile?.role] || userProfile?.role || "Worker";
@@ -140,7 +140,7 @@ export default function WorkerDashboard() {
               <div>
                 <p className="stat-label">Assigned</p>
                 <p className="stat-number">
-                  {loadingData ? "—" : totalElements}
+                  {loadingData ? "—" : totalTasks}
                 </p>
               </div>
             </div>
@@ -151,7 +151,7 @@ export default function WorkerDashboard() {
               <div>
                 <p className="stat-label">Completed</p>
                 <p className="stat-number">
-                  {loadingData ? "—" : doneElements}
+                  {loadingData ? "—" : doneTasks}
                 </p>
               </div>
             </div>
@@ -162,7 +162,7 @@ export default function WorkerDashboard() {
               <div>
                 <p className="stat-label">Pending</p>
                 <p className="stat-number">
-                  {loadingData ? "—" : pendingElements}
+                  {loadingData ? "—" : pendingTasks}
                 </p>
               </div>
             </div>
@@ -186,31 +186,29 @@ export default function WorkerDashboard() {
                   <div key={i} className="loading-row" />
                 ))}
               </div>
-            ) : assignments.length === 0 ? (
+            ) : tasks.length === 0 ? (
               <div className="empty-state">
                 <p>
-                  No assignments yet. Ask your manager to assign work to you.
+                  No tasks yet. Ask your manager to assign work to you.
                 </p>
               </div>
             ) : (
               <div className="recent-projects-list">
-                {assignments.map((a) => {
-                  const done = a.elements.filter((e) => e.completed).length;
-                  const total = a.elements.length;
-                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                {tasks.map((task) => {
+                  const statusLabel = task.completed ? "Done" : "Pending";
                   return (
                     <div
-                      key={a.blueprintId}
+                      key={task.id}
                       className="recent-project-row"
                       onClick={() =>
-                        navigate(`/projects/${a.projectId}/blueprints`)
+                        navigate(`/projects/${task.projectId}/tasks/${task.id}/blueprints`)
                       }
                     >
                       <span className="rp-icon">
-                        <MdDesignServices />
+                        <MdAssignment />
                       </span>
                       <div style={{ flex: 1 }}>
-                        <div className="rp-name">{a.blueprintName}</div>
+                        <div className="rp-name">{task.title || "Task"}</div>
                         <div
                           style={{
                             display: "flex",
@@ -219,17 +217,14 @@ export default function WorkerDashboard() {
                             marginTop: 4,
                           }}
                         >
-                          <div
-                            className="progress-bar"
-                            style={{ width: 120, height: 5, margin: 0 }}
-                          >
-                            <div
-                              className="progress-fill"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
                           <span style={{ fontSize: 12, color: "#718096" }}>
-                            {done}/{total} done
+                            {projectNames[task.projectId] || "Project"}
+                          </span>
+                          <span style={{ fontSize: 12, color: "#718096" }}>
+                            Due: {task.dueDate || "—"}
+                          </span>
+                          <span style={{ fontSize: 12, color: "#718096" }}>
+                            {statusLabel}
                           </span>
                         </div>
                       </div>
