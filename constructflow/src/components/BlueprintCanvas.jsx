@@ -41,7 +41,7 @@ function BlueprintCanvas({
   const dragRef = useRef({ startClient: null, startPoints: null, objId: null });
 
   // ── Image overlay geometry ────────────────────────────────────────────────
-  const [imgRect, setImgRect] = useState(null);     // rendered rect inside container
+  const [imgRect, setImgRect] = useState(null); // rendered rect inside container
   const [naturalSize, setNaturalSize] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [shiftPressed, setShiftPressed] = useState(false);
@@ -62,34 +62,37 @@ function BlueprintCanvas({
     };
   }, []);
 
-  const getFixtureConnectionPoints = useCallback((rect, connectionCount = 1) => {
-    if (!rect || !rect.width || !rect.height) return [];
-    const centerX = rect.x + rect.width / 2;
-    const centerY = rect.y + rect.height / 2;
-    const spread = Math.max(8, Math.min(rect.width, rect.height) * 0.2);
-    const count = Math.min(4, Math.max(1, Number(connectionCount) || 1));
+  const getFixtureConnectionPoints = useCallback(
+    (rect, connectionCount = 1) => {
+      if (!rect || !rect.width || !rect.height) return [];
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      const spread = Math.max(8, Math.min(rect.width, rect.height) * 0.2);
+      const count = Math.min(4, Math.max(1, Number(connectionCount) || 1));
 
-    if (count === 1) return [{ x: centerX, y: centerY }];
-    if (count === 2) {
-      return [
-        { x: centerX - spread, y: centerY },
-        { x: centerX + spread, y: centerY },
-      ];
-    }
-    if (count === 3) {
+      if (count === 1) return [{ x: centerX, y: centerY }];
+      if (count === 2) {
+        return [
+          { x: centerX - spread, y: centerY },
+          { x: centerX + spread, y: centerY },
+        ];
+      }
+      if (count === 3) {
+        return [
+          { x: centerX, y: centerY - spread },
+          { x: centerX - spread, y: centerY + spread },
+          { x: centerX + spread, y: centerY + spread },
+        ];
+      }
       return [
         { x: centerX, y: centerY - spread },
-        { x: centerX - spread, y: centerY + spread },
-        { x: centerX + spread, y: centerY + spread },
+        { x: centerX + spread, y: centerY },
+        { x: centerX, y: centerY + spread },
+        { x: centerX - spread, y: centerY },
       ];
-    }
-    return [
-      { x: centerX, y: centerY - spread },
-      { x: centerX + spread, y: centerY },
-      { x: centerX, y: centerY + spread },
-      { x: centerX - spread, y: centerY },
-    ];
-  }, []);
+    },
+    [],
+  );
 
   const clampZoom = useCallback(
     (value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value)),
@@ -155,26 +158,29 @@ function BlueprintCanvas({
   }, [activeObjectId]);
 
   // ── Keyboard undo / redo ──────────────────────────────────────────────────
-  const handleKeyDown = useCallback((e) => {
-    if (!activeObjectId) return;
-    if (e.ctrlKey && e.shiftKey && (e.key === "Z" || e.key === "z")) {
-      e.preventDefault();
-      setRedoStack((prev) => {
-        if (prev.length === 0) return prev;
-        const point = prev[prev.length - 1];
-        setCurrentPoints((pts) => [...pts, point]);
-        return prev.slice(0, -1);
-      });
-    } else if (e.ctrlKey && !e.shiftKey && (e.key === "z" || e.key === "Z")) {
-      e.preventDefault();
-      setCurrentPoints((prev) => {
-        if (prev.length === 0) return prev;
-        const removed = prev[prev.length - 1];
-        setRedoStack((r) => [...r, removed]);
-        return prev.slice(0, -1);
-      });
-    }
-  }, [activeObjectId]);
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (!activeObjectId) return;
+      if (e.ctrlKey && e.shiftKey && (e.key === "Z" || e.key === "z")) {
+        e.preventDefault();
+        setRedoStack((prev) => {
+          if (prev.length === 0) return prev;
+          const point = prev[prev.length - 1];
+          setCurrentPoints((pts) => [...pts, point]);
+          return prev.slice(0, -1);
+        });
+      } else if (e.ctrlKey && !e.shiftKey && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        setCurrentPoints((prev) => {
+          if (prev.length === 0) return prev;
+          const removed = prev[prev.length - 1];
+          setRedoStack((r) => [...r, removed]);
+          return prev.slice(0, -1);
+        });
+      }
+    },
+    [activeObjectId],
+  );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -207,18 +213,21 @@ function BlueprintCanvas({
   };
 
   // ── Coordinate conversion: client → natural-image pixels ─────────────────
-  const clientToSvg = useCallback((clientX, clientY) => {
-    if (!imgRect || !naturalSize) return { x: 0, y: 0 };
-    const container = containerRef.current;
-    if (!container) return { x: 0, y: 0 };
-    const cRect = container.getBoundingClientRect();
-    const relX = clientX - cRect.left - imgRect.left;
-    const relY = clientY - cRect.top - imgRect.top;
-    return {
-      x: (relX / imgRect.width) * naturalSize.w,
-      y: (relY / imgRect.height) * naturalSize.h,
-    };
-  }, [imgRect, naturalSize]);
+  const clientToSvg = useCallback(
+    (clientX, clientY) => {
+      if (!imgRect || !naturalSize) return { x: 0, y: 0 };
+      const container = containerRef.current;
+      if (!container) return { x: 0, y: 0 };
+      const cRect = container.getBoundingClientRect();
+      const relX = clientX - cRect.left - imgRect.left;
+      const relY = clientY - cRect.top - imgRect.top;
+      return {
+        x: (relX / imgRect.width) * naturalSize.w,
+        y: (relY / imgRect.height) * naturalSize.h,
+      };
+    },
+    [imgRect, naturalSize],
+  );
 
   const gridSpacing = useMemo(() => {
     if (!imgRect || !naturalSize) return null;
@@ -272,7 +281,8 @@ function BlueprintCanvas({
 
   const snapToFixturePoint = useCallback(
     (point) => {
-      if (!imgRect || !naturalSize || fixtureSnapPoints.length === 0) return point;
+      if (!imgRect || !naturalSize || fixtureSnapPoints.length === 0)
+        return point;
       const pixelToNatural = naturalSize.w / imgRect.width;
       const threshold = 12 * pixelToNatural;
       let nearest = null;
@@ -304,8 +314,16 @@ function BlueprintCanvas({
 
     if (activeObjectId) {
       const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
-      const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "connection"].includes(activeType);
-      setMousePos(shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid);
+      const shouldSnapToFixture = [
+        "pipe",
+        "hot_pipe",
+        "cold_pipe",
+        "drain_pipe",
+        "connection",
+      ].includes(activeType);
+      setMousePos(
+        shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid,
+      );
     }
     if (dragging) {
       handleDragMove(e);
@@ -317,8 +335,16 @@ function BlueprintCanvas({
     if (isDrawingFixtureArea) return;
     const raw = clientToSvg(e.clientX, e.clientY);
     const snappedToGrid = shiftPressed ? snapToGrid(raw) : raw;
-    const shouldSnapToFixture = ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "connection"].includes(activeType);
-    const pos = shouldSnapToFixture ? snapToFixturePoint(snappedToGrid) : snappedToGrid;
+    const shouldSnapToFixture = [
+      "pipe",
+      "hot_pipe",
+      "cold_pipe",
+      "drain_pipe",
+      "connection",
+    ].includes(activeType);
+    const pos = shouldSnapToFixture
+      ? snapToFixturePoint(snappedToGrid)
+      : snappedToGrid;
     setCurrentPoints((prev) => [...prev, pos]);
     setRedoStack([]);
   };
@@ -433,7 +459,9 @@ function BlueprintCanvas({
   const pointsToPath = (points) => {
     if (!points || points.length === 0) return "";
     return points
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+      .map(
+        (p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`,
+      )
       .join(" ");
   };
 
@@ -457,7 +485,9 @@ function BlueprintCanvas({
           <div className="placeholder-content">
             <MdArchitecture className="placeholder-icon" />
             <p>No blueprint uploaded</p>
-            <p className="placeholder-hint">Upload a blueprint image to get started</p>
+            <p className="placeholder-hint">
+              Upload a blueprint image to get started
+            </p>
           </div>
         </div>
       </div>
@@ -470,7 +500,11 @@ function BlueprintCanvas({
       ref={containerRef}
       onWheel={handleWheelZoom}
     >
-      <div className="zoom-controls" role="group" aria-label="Blueprint zoom controls">
+      <div
+        className="zoom-controls"
+        role="group"
+        aria-label="Blueprint zoom controls"
+      >
         <button
           type="button"
           className="zoom-btn"
@@ -616,8 +650,10 @@ function BlueprintCanvas({
                     cursor: activeObjectId
                       ? "crosshair"
                       : isSelected && !isWorker
-                      ? (dragging ? "grabbing" : "grab")
-                      : "pointer",
+                        ? dragging
+                          ? "grabbing"
+                          : "grab"
+                        : "pointer",
                   }}
                   onMouseDown={(e) => !isWorker && handlePathMouseDown(e, obj)}
                   onClick={(e) => {
@@ -641,7 +677,11 @@ function BlueprintCanvas({
                           if (activeObjectId || dragging) return;
                           e.stopPropagation();
                           if (activePointTool && onPointToolHover) {
-                            onPointToolHover(obj.id, pointIndex, activePointTool);
+                            onPointToolHover(
+                              obj.id,
+                              pointIndex,
+                              activePointTool,
+                            );
                           }
                           onPointSelected &&
                             onPointSelected({ objectId: obj.id, pointIndex });
@@ -682,7 +722,13 @@ function BlueprintCanvas({
                 />
               )}
               {currentPoints.map((p, i) => (
-                <circle key={i} cx={p.x} cy={p.y} r="6" className="path-point" />
+                <circle
+                  key={i}
+                  cx={p.x}
+                  cy={p.y}
+                  r="6"
+                  className="path-point"
+                />
               ))}
             </>
           )}
