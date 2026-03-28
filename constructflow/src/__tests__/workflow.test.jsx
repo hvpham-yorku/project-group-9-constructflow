@@ -44,6 +44,7 @@ vi.mock("react-router-dom", () => ({
 vi.mock("react-icons/md", () => ({
   MdConstruction: () => <span />,
   MdClose: () => <span />,
+  MdLogin: () => <span />,
   MdElectricBolt: () => <span />,
   MdPlumbing: () => <span />,
   MdEngineering: () => <span />,
@@ -85,7 +86,11 @@ import { useAuth } from "../contexts/AuthContext";
 vi.mock("../firebase", () => ({ auth: {}, db: {} }));
 
 vi.mock("firebase/firestore", () => ({
-  collection: vi.fn((database, name) => ({ kind: "collection", database, name })),
+  collection: vi.fn((database, name) => ({
+    kind: "collection",
+    database,
+    name,
+  })),
   addDoc: vi.fn(),
   getDocs: vi.fn(),
   getDoc: vi.fn(),
@@ -95,6 +100,9 @@ vi.mock("firebase/firestore", () => ({
   query: vi.fn((ref, ...clauses) => ({ kind: "query", ref, clauses })),
   where: vi.fn((field, op, value) => ({ kind: "where", field, op, value })),
   serverTimestamp: vi.fn(() => new Date()),
+  Timestamp: {
+    fromDate: vi.fn((date) => date),
+  },
   deleteField: vi.fn(),
 }));
 
@@ -256,14 +264,14 @@ describe("ConstructFlow End-to-End Workflow", () => {
 
     render(<OrganizationPage />);
 
-    // Default tab is "Create Organisation"
+    // Default tab is "Create Organization"
     const textbox = screen.getByRole("textbox");
     await user.type(textbox, "BuildCo Construction");
 
     // Both the active tab and the submit button share the label text;
     // click the last matched element which is the submit button.
     const createOrgBtns = screen.getAllByRole("button", {
-      name: /create organisation/i,
+      name: /create organization/i,
     });
     await user.click(createOrgBtns[createOrgBtns.length - 1]);
 
@@ -287,9 +295,9 @@ describe("ConstructFlow End-to-End Workflow", () => {
 
     render(<OrganizationPage />);
 
-    // Switch to "Join Organisation" tab
+    // Switch to "Join Organization" tab
     await user.click(
-      screen.getByRole("button", { name: /join organisation/i }),
+      screen.getByRole("button", { name: /join organization/i }),
     );
 
     const textbox = screen.getByRole("textbox");
@@ -318,7 +326,7 @@ describe("ConstructFlow End-to-End Workflow", () => {
     render(<OrganizationPage />);
 
     await user.click(
-      screen.getByRole("button", { name: /join organisation/i }),
+      screen.getByRole("button", { name: /join organization/i }),
     );
 
     await user.type(screen.getByRole("textbox"), "VALID1");
@@ -351,7 +359,7 @@ describe("ConstructFlow End-to-End Workflow", () => {
 
     // Step 1: enter invite code
     await user.click(
-      screen.getByRole("button", { name: /join organisation/i }),
+      screen.getByRole("button", { name: /join organization/i }),
     );
     await user.type(screen.getByRole("textbox"), "VALID1");
     await user.click(screen.getByRole("button", { name: /next/i }));
@@ -362,7 +370,7 @@ describe("ConstructFlow End-to-End Workflow", () => {
     });
     await user.click(screen.getByRole("button", { name: /plumber/i }));
     await user.click(
-      screen.getByRole("button", { name: /join organisation/i }),
+      screen.getByRole("button", { name: /join organization/i }),
     );
 
     await waitFor(() => {
@@ -380,20 +388,32 @@ describe("ConstructFlow End-to-End Workflow", () => {
     const user = userEvent.setup();
     useAuth.mockReturnValue(MANAGER);
 
-    // Initial fetch: no projects yet
-    firestoreModule.getDocs.mockResolvedValueOnce(makeSnap([]));
-    firestoreModule.addDoc.mockResolvedValueOnce({ id: "proj-1" });
-    // Refetch after creation: returns the new project
-    firestoreModule.getDocs.mockResolvedValueOnce(
-      makeSnap([
-        makeDocSnap("proj-1", {
-          name: "Riverside Tower",
-          description: "Main site",
-          status: "active",
-          organizationId: "org-1",
-        }),
-      ]),
-    );
+    let created = false;
+    firestoreModule.getDocs.mockImplementation((queryRef) => {
+      const collectionName = getCollectionName(queryRef);
+      if (collectionName === "projects") {
+        if (!created) return Promise.resolve(makeSnap([]));
+        return Promise.resolve(
+          makeSnap([
+            makeDocSnap("proj-1", {
+              name: "Riverside Tower",
+              description: "Main site",
+              status: "active",
+              organizationId: "org-1",
+            }),
+          ]),
+        );
+      }
+      if (collectionName === "tasks" || collectionName === "blueprints") {
+        return Promise.resolve(makeSnap([]));
+      }
+      return Promise.resolve(makeSnap([]));
+    });
+
+    firestoreModule.addDoc.mockImplementationOnce(async () => {
+      created = true;
+      return { id: "proj-1" };
+    });
 
     render(<ProjectsPage />);
 
@@ -565,6 +585,14 @@ describe("ConstructFlow End-to-End Workflow", () => {
   it("10. Worker sees their assigned tasks listed on the Worker Dashboard", async () => {
     useAuth.mockReturnValue(WORKER);
 
+    firestoreModule.getDoc.mockResolvedValueOnce(
+      makeDocSnap("wkr-1", {
+        name: "Bob Plumber",
+        role: "plumber",
+        organizationId: "org-1",
+      }),
+    );
+
     firestoreModule.getDocs.mockImplementation((queryRef) => {
       const collectionName = getCollectionName(queryRef);
       if (collectionName === "projects") {
@@ -691,8 +719,6 @@ describe("ConstructFlow End-to-End Workflow", () => {
     });
 
     expect(screen.getByText("50%")).toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Task progress 50%"),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Task progress 50%")).toBeInTheDocument();
   });
 });
