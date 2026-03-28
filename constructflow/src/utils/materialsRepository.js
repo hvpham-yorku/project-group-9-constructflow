@@ -4,10 +4,7 @@ import {
   normalizeInventoryMaterial,
   normalizeTaskAllocation,
 } from "./inventoryDomain";
-
-const MATERIALS_COLLECTION = "materials";
-const ALLOCATIONS_COLLECTION = "taskMaterialAllocations";
-const TRANSACTIONS_COLLECTION = "materialTransactions";
+import { MATERIAL_COLLECTIONS } from "./materialsConstants";
 
 const normalizeMaterialDoc = (docSnap) =>
   normalizeInventoryMaterial({
@@ -59,7 +56,7 @@ export const listProjectMaterials = async ({ organizationId, projectId }) => {
   if (!organizationId || !projectId) return [];
 
   const ref = query(
-    collection(db, MATERIALS_COLLECTION),
+    collection(db, MATERIAL_COLLECTIONS.MATERIALS),
     where("organizationId", "==", organizationId),
     where("projectId", "==", projectId),
   );
@@ -76,7 +73,7 @@ export const listTaskMaterialAllocations = async ({
   if (!organizationId || !projectId || !taskId) return [];
 
   const ref = query(
-    collection(db, ALLOCATIONS_COLLECTION),
+    collection(db, MATERIAL_COLLECTIONS.TASK_ALLOCATIONS),
     where("organizationId", "==", organizationId),
     where("projectId", "==", projectId),
     where("taskId", "==", taskId),
@@ -93,7 +90,7 @@ export const listProjectMaterialTransactions = async ({
   if (!organizationId || !projectId) return [];
 
   const ref = query(
-    collection(db, TRANSACTIONS_COLLECTION),
+    collection(db, MATERIAL_COLLECTIONS.TRANSACTIONS),
     where("organizationId", "==", organizationId),
     where("projectId", "==", projectId),
   );
@@ -110,7 +107,7 @@ export const listTaskMaterialTransactions = async ({
   if (!organizationId || !projectId || !taskId) return [];
 
   const ref = query(
-    collection(db, TRANSACTIONS_COLLECTION),
+    collection(db, MATERIAL_COLLECTIONS.TRANSACTIONS),
     where("organizationId", "==", organizationId),
     where("projectId", "==", projectId),
     where("taskId", "==", taskId),

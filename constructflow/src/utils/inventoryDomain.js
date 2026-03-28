@@ -1,3 +1,5 @@
+import { DEFAULT_MATERIAL_UNIT, MATERIAL_STATUS } from "./materialsConstants";
+
 const toNumber = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -10,10 +12,13 @@ export const normalizeInventoryMaterial = (raw = {}) => ({
   id: String(raw.id || "").trim(),
   projectId: String(raw.projectId || "").trim(),
   name: String(raw.name || "").trim(),
-  unit: String(raw.unit || "unit").trim(),
+  unit: String(raw.unit || DEFAULT_MATERIAL_UNIT).trim(),
   quantityOnHand: toNonNegative(raw.quantityOnHand, 0),
   minimumThreshold: toNonNegative(raw.minimumThreshold, 0),
-  status: raw.status === "depleted" ? "depleted" : "active",
+  status:
+    raw.status === MATERIAL_STATUS.DEPLETED
+      ? MATERIAL_STATUS.DEPLETED
+      : MATERIAL_STATUS.ACTIVE,
   updatedAt: raw.updatedAt || null,
 });
 
@@ -109,7 +114,8 @@ export const applyAssignmentDeduction = (inventoryItems = [], allocations = []) 
     const updated = {
       ...item,
       quantityOnHand: afterQty,
-      status: afterQty === 0 ? "depleted" : "active",
+      status:
+        afterQty === 0 ? MATERIAL_STATUS.DEPLETED : MATERIAL_STATUS.ACTIVE,
     };
 
     deductionLog.push({
