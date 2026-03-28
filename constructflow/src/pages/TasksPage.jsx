@@ -16,8 +16,10 @@ import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
 import {
+  assignMaterialsToTaskWithDeduction,
   createMaterial,
   listProjectMaterials,
+  listTaskMaterialAllocations,
   removeMaterial,
   updateMaterial,
 } from "../utils/materialsRepository";
@@ -79,6 +81,11 @@ export default function TasksPage() {
   const [materialsError, setMaterialsError] = useState("");
   const [materialNotice, setMaterialNotice] = useState("");
   const [materialNoticeType, setMaterialNoticeType] = useState("info");
+  const [taskAllocationsByTaskId, setTaskAllocationsByTaskId] = useState({});
+  const [assignMaterialByTaskId, setAssignMaterialByTaskId] = useState({});
+  const [assignQtyByTaskId, setAssignQtyByTaskId] = useState({});
+  const [assigningTaskId, setAssigningTaskId] = useState("");
+  const [taskMaterialNoticeByTaskId, setTaskMaterialNoticeByTaskId] = useState({});
 
   const [newMaterialName, setNewMaterialName] = useState("");
   const [newMaterialUnit, setNewMaterialUnit] = useState(DEFAULT_MATERIAL_UNIT);
@@ -127,6 +134,11 @@ export default function TasksPage() {
           status: material.status === "depleted" ? "depleted" : "active",
         })),
     [projectMaterials],
+  );
+
+  const materialsById = useMemo(
+    () => Object.fromEntries(safeProjectMaterials.map((material) => [material.id, material])),
+    [safeProjectMaterials],
   );
 
   const handleOpenBlueprint = (task) => {
@@ -215,6 +227,35 @@ export default function TasksPage() {
   useEffect(() => {
     loadProjectMaterials();
   }, [organizationId, projectId]);
+
+  const loadTaskMaterialMap = async (taskList = tasks) => {
+    if (!organizationId || !projectId) return;
+
+    if (!Array.isArray(taskList) || taskList.length === 0) {
+      setTaskAllocationsByTaskId({});
+      return;
+    }
+
+    try {
+      const entries = await Promise.all(
+        taskList.map(async (task) => {
+          const allocations = await listTaskMaterialAllocations({
+            organizationId,
+            projectId,
+            taskId: task.id,
+          });
+          return [task.id, allocations];
+        }),
+      );
+      setTaskAllocationsByTaskId(Object.fromEntries(entries));
+    } catch (err) {
+      console.error("Load task material allocations:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadTaskMaterialMap(tasks);
+  }, [tasks, organizationId, projectId]);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -357,6 +398,74 @@ export default function TasksPage() {
       setMaterialNoticeType("error");
     }
     setDeletingMaterialId("");
+  };
+
+  const setTaskMaterialNotice = (taskId, message, type = "info") => {
+    setTaskMaterialNoticeByTaskId((prev) => ({
+      ...prev,
+      [taskId]: { message, type },
+    }));
+  };
+
+  const handleAttachMaterialToTask = async (task) => {
+    const selectedMaterialId = assignMaterialByTaskId[task.id] || "";
+    const qty = Math.max(0, Number(assignQtyByTaskId[task.id]) || 0);
+
+    if (!selectedMaterialId) {
+      setTaskMaterialNotice(task.id, "Select a material first.", "error");
+      return;
+    }
+
+    if (qty <= 0) {
+      setTaskMaterialNotice(task.id, "Quantity must be greater than zero.", "error");
+      return;
+    }
+
+    const existing = taskAllocationsByTaskId[task.id] || [];
+    if (existing.some((allocation) => allocation.materialId === selectedMaterialId)) {
+      setTaskMaterialNotice(
+        task.id,
+        "This material is already attached to the task.",
+        "error",
+      );
+      return;
+    }
+
+    const selectedMaterial = materialsById[selectedMaterialId];
+    if (!selectedMaterial) {
+      setTaskMaterialNotice(task.id, "Selected material is not available.", "error");
+      return;
+    }
+
+    if (selectedMaterial.quantityOnHand < qty) {
+      setTaskMaterialNotice(
+        task.id,
+        `Not enough stock. Available: ${selectedMaterial.quantityOnHand} ${selectedMaterial.unit}.`,
+        "error",
+      );
+      return;
+    }
+
+    setAssigningTaskId(task.id);
+    setTaskMaterialNotice(task.id, "", "info");
+    try {
+      await assignMaterialsToTaskWithDeduction({
+        organizationId,
+        projectId,
+        taskId: task.id,
+        allocations: [{ materialId: selectedMaterialId, quantityRequired: qty }],
+        performedBy: currentUser?.uid || "",
+        note: `Attached to task ${task.title}`,
+      });
+
+      setTaskMaterialNotice(task.id, "Material attached to task.", "success");
+      setAssignMaterialByTaskId((prev) => ({ ...prev, [task.id]: "" }));
+      setAssignQtyByTaskId((prev) => ({ ...prev, [task.id]: "" }));
+      await Promise.all([loadProjectMaterials(), loadTaskMaterialMap(tasks)]);
+    } catch (err) {
+      setTaskMaterialNotice(task.id, err.message || "Failed to attach material.", "error");
+    }
+    setAssigningTaskId("");
   };
 
   return (
@@ -665,6 +774,80 @@ export default function TasksPage() {
                       <span>
                         <MdPerson /> Worker: {task.assignedWorkerName || workersById[task.assignedWorkerId]?.name || "—"}
                       </span>
+                    </div>
+
+                    <div className="task-materials-block">
+                      <h5>Task Materials</h5>
+
+                      {(taskAllocationsByTaskId[task.id] || []).length === 0 ? (
+                        <p className="task-materials-empty">No materials attached.</p>
+                      ) : (
+                        <ul className="task-materials-list">
+                          {(taskAllocationsByTaskId[task.id] || []).map((allocation) => {
+                            const material = materialsById[allocation.materialId];
+                            return (
+                              <li key={`${task.id}-${allocation.materialId}`}>
+                                <span>{material?.name || "Material"}</span>
+                                <strong>
+                                  {allocation.quantityRequired} {material?.unit || "unit"}
+                                </strong>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+
+                      {isManager && (
+                        <div className="task-materials-attach-row">
+                          <select
+                            value={assignMaterialByTaskId[task.id] || ""}
+                            onChange={(e) =>
+                              setAssignMaterialByTaskId((prev) => ({
+                                ...prev,
+                                [task.id]: e.target.value,
+                              }))
+                            }
+                            aria-label={`Select material for ${task.title}`}
+                          >
+                            <option value="">Select material</option>
+                            {safeProjectMaterials.map((material) => (
+                              <option key={material.id} value={material.id}>
+                                {material.name} ({material.quantityOnHand} {material.unit} available)
+                              </option>
+                            ))}
+                          </select>
+
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Qty"
+                            value={assignQtyByTaskId[task.id] || ""}
+                            onChange={(e) =>
+                              setAssignQtyByTaskId((prev) => ({
+                                ...prev,
+                                [task.id]: e.target.value,
+                              }))
+                            }
+                            aria-label={`Material quantity for ${task.title}`}
+                          />
+
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => handleAttachMaterialToTask(task)}
+                            disabled={assigningTaskId === task.id || safeProjectMaterials.length === 0}
+                          >
+                            {assigningTaskId === task.id ? "Attaching…" : "Attach"}
+                          </button>
+                        </div>
+                      )}
+
+                      {taskMaterialNoticeByTaskId[task.id]?.message && (
+                        <p className={`task-material-notice ${taskMaterialNoticeByTaskId[task.id]?.type || "info"}`}>
+                          {taskMaterialNoticeByTaskId[task.id].message}
+                        </p>
+                      )}
                     </div>
 
                     <div className="task-actions">
