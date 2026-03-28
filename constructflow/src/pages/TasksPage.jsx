@@ -15,7 +15,13 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
-import { listProjectMaterials } from "../utils/materialsRepository";
+import {
+  createMaterial,
+  listProjectMaterials,
+  removeMaterial,
+  updateMaterial,
+} from "../utils/materialsRepository";
+import { DEFAULT_MATERIAL_UNIT, MATERIAL_UNITS } from "../utils/materialsConstants";
 import "../styles/TasksPage.css";
 
 const countBlueprintUnits = (objects = {}) => {
@@ -71,6 +77,20 @@ export default function TasksPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingMaterials, setLoadingMaterials] = useState(false);
   const [materialsError, setMaterialsError] = useState("");
+  const [materialNotice, setMaterialNotice] = useState("");
+  const [materialNoticeType, setMaterialNoticeType] = useState("info");
+
+  const [newMaterialName, setNewMaterialName] = useState("");
+  const [newMaterialUnit, setNewMaterialUnit] = useState(DEFAULT_MATERIAL_UNIT);
+  const [newMaterialQty, setNewMaterialQty] = useState("0");
+  const [savingMaterial, setSavingMaterial] = useState(false);
+
+  const [editingMaterialId, setEditingMaterialId] = useState("");
+  const [editMaterialName, setEditMaterialName] = useState("");
+  const [editMaterialUnit, setEditMaterialUnit] = useState(DEFAULT_MATERIAL_UNIT);
+  const [editMaterialQty, setEditMaterialQty] = useState("0");
+  const [updatingMaterial, setUpdatingMaterial] = useState(false);
+  const [deletingMaterialId, setDeletingMaterialId] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -94,6 +114,20 @@ export default function TasksPage() {
       completion: getTaskCompletion(task.id, taskBlueprints),
     }));
   }, [tasks, taskBlueprints, isManager, currentUser?.uid]);
+
+  const safeProjectMaterials = useMemo(
+    () =>
+      (Array.isArray(projectMaterials) ? projectMaterials : [])
+        .filter((material) => material && typeof material === "object")
+        .map((material) => ({
+          id: String(material.id || ""),
+          name: String(material.name || "Unnamed Material"),
+          unit: String(material.unit || DEFAULT_MATERIAL_UNIT),
+          quantityOnHand: Math.max(0, Number(material.quantityOnHand) || 0),
+          status: material.status === "depleted" ? "depleted" : "active",
+        })),
+    [projectMaterials],
+  );
 
   const handleOpenBlueprint = (task) => {
     navigate(`/projects/${projectId}/tasks/${task.id}/blueprints`);
@@ -167,7 +201,9 @@ export default function TasksPage() {
     setMaterialsError("");
     try {
       const materials = await listProjectMaterials({ organizationId, projectId });
-      materials.sort((a, b) => a.name.localeCompare(b.name));
+      materials.sort((a, b) =>
+        String(a?.name || "").localeCompare(String(b?.name || "")),
+      );
       setProjectMaterials(materials);
     } catch (err) {
       console.error("Load project materials:", err);
@@ -215,6 +251,112 @@ export default function TasksPage() {
       setError(err.message || "Failed to create task.");
     }
     setSaving(false);
+  };
+
+  const resetMaterialNotice = () => {
+    setMaterialNotice("");
+    setMaterialNoticeType("info");
+  };
+
+  const handleCreateMaterial = async (e) => {
+    e.preventDefault();
+    const qty = Math.max(0, Number(newMaterialQty) || 0);
+
+    if (!newMaterialName.trim()) {
+      setMaterialNotice("Material name is required.");
+      setMaterialNoticeType("error");
+      return;
+    }
+
+    setSavingMaterial(true);
+    resetMaterialNotice();
+    try {
+      await createMaterial({
+        organizationId,
+        projectId,
+        name: newMaterialName,
+        unit: newMaterialUnit,
+        quantityOnHand: qty,
+        createdBy: currentUser?.uid || "",
+      });
+
+      setNewMaterialName("");
+      setNewMaterialUnit(DEFAULT_MATERIAL_UNIT);
+      setNewMaterialQty("0");
+      setMaterialNotice("Material added.");
+      setMaterialNoticeType("success");
+      await loadProjectMaterials();
+    } catch (err) {
+      setMaterialNotice(err.message || "Failed to add material.");
+      setMaterialNoticeType("error");
+    }
+    setSavingMaterial(false);
+  };
+
+  const startMaterialEdit = (material) => {
+    setEditingMaterialId(material.id);
+    setEditMaterialName(material.name || "");
+    setEditMaterialUnit(material.unit || DEFAULT_MATERIAL_UNIT);
+    setEditMaterialQty(String(material.quantityOnHand ?? 0));
+    resetMaterialNotice();
+  };
+
+  const cancelMaterialEdit = () => {
+    setEditingMaterialId("");
+    setEditMaterialName("");
+    setEditMaterialUnit(DEFAULT_MATERIAL_UNIT);
+    setEditMaterialQty("0");
+  };
+
+  const handleSaveMaterialEdit = async () => {
+    if (!editingMaterialId) return;
+    if (!editMaterialName.trim()) {
+      setMaterialNotice("Material name is required.");
+      setMaterialNoticeType("error");
+      return;
+    }
+
+    setUpdatingMaterial(true);
+    resetMaterialNotice();
+    try {
+      await updateMaterial({
+        materialId: editingMaterialId,
+        updates: {
+          name: editMaterialName,
+          unit: editMaterialUnit,
+          quantityOnHand: Math.max(0, Number(editMaterialQty) || 0),
+        },
+      });
+
+      setMaterialNotice("Material updated.");
+      setMaterialNoticeType("success");
+      cancelMaterialEdit();
+      await loadProjectMaterials();
+    } catch (err) {
+      setMaterialNotice(err.message || "Failed to update material.");
+      setMaterialNoticeType("error");
+    }
+    setUpdatingMaterial(false);
+  };
+
+  const handleDeleteMaterial = async (material) => {
+    if (!window.confirm(`Remove material \"${material.name}\"?`)) return;
+
+    setDeletingMaterialId(material.id);
+    resetMaterialNotice();
+    try {
+      await removeMaterial({ materialId: material.id });
+      setMaterialNotice("Material removed.");
+      setMaterialNoticeType("success");
+      if (editingMaterialId === material.id) {
+        cancelMaterialEdit();
+      }
+      await loadProjectMaterials();
+    } catch (err) {
+      setMaterialNotice(err.message || "Failed to remove material.");
+      setMaterialNoticeType("error");
+    }
+    setDeletingMaterialId("");
   };
 
   return (
@@ -313,11 +455,60 @@ export default function TasksPage() {
               </p>
             </div>
 
+            {isManager && (
+              <form className="material-create-form" onSubmit={handleCreateMaterial}>
+                <div className="material-create-grid">
+                  <input
+                    type="text"
+                    placeholder="Material name"
+                    value={newMaterialName}
+                    onChange={(e) => setNewMaterialName(e.target.value)}
+                    aria-label="Material name"
+                    required
+                  />
+
+                  <select
+                    value={newMaterialUnit}
+                    onChange={(e) => setNewMaterialUnit(e.target.value)}
+                    aria-label="Material unit"
+                  >
+                    {MATERIAL_UNITS.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="In stock"
+                    value={newMaterialQty}
+                    onChange={(e) => setNewMaterialQty(e.target.value)}
+                    aria-label="Material quantity"
+                  />
+
+                  <button
+                    type="submit"
+                    className="btn-primary"
+                    disabled={savingMaterial}
+                  >
+                    {savingMaterial ? "Adding…" : "Add Material"}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {materialNotice && (
+              <p className={`material-notice ${materialNoticeType}`}>{materialNotice}</p>
+            )}
+
             {loadingMaterials ? (
               <div className="tasks-empty">Loading inventory…</div>
             ) : materialsError ? (
               <div className="tasks-empty tasks-empty-error">{materialsError}</div>
-            ) : projectMaterials.length === 0 ? (
+            ) : safeProjectMaterials.length === 0 ? (
               <div className="tasks-empty">
                 No materials in this project yet.
               </div>
@@ -328,37 +519,111 @@ export default function TasksPage() {
                     <tr>
                       <th>Material</th>
                       <th>In Stock</th>
-                      <th>Threshold</th>
                       <th>Status</th>
+                      {isManager && <th>Actions</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {projectMaterials.map((material) => (
+                    {safeProjectMaterials.map((material) => (
                       <tr key={material.id}>
-                        <td>{material.name}</td>
                         <td>
-                          {material.quantityOnHand} {material.unit}
+                          {editingMaterialId === material.id ? (
+                            <input
+                              className="inventory-edit-input"
+                              type="text"
+                              value={editMaterialName}
+                              onChange={(e) => setEditMaterialName(e.target.value)}
+                            />
+                          ) : (
+                            material.name
+                          )}
                         </td>
                         <td>
-                          {material.minimumThreshold} {material.unit}
+                          {editingMaterialId === material.id ? (
+                            <div className="inventory-inline-fields">
+                              <input
+                                className="inventory-edit-input"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={editMaterialQty}
+                                onChange={(e) => setEditMaterialQty(e.target.value)}
+                              />
+                              <select
+                                className="inventory-edit-input"
+                                value={editMaterialUnit}
+                                onChange={(e) => setEditMaterialUnit(e.target.value)}
+                              >
+                                {MATERIAL_UNITS.map((unit) => (
+                                  <option key={unit} value={unit}>
+                                    {unit}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <>
+                              {material.quantityOnHand} {material.unit}
+                            </>
+                          )}
                         </td>
                         <td>
                           <span
                             className={`material-status-chip ${
                               material.status === "depleted"
                                 ? "depleted"
-                                : material.quantityOnHand <= material.minimumThreshold
-                                  ? "low"
-                                  : "active"
+                                : "active"
                             }`}
                           >
                             {material.status === "depleted"
                               ? "Depleted"
-                              : material.quantityOnHand <= material.minimumThreshold
-                                ? "Low stock"
-                                : "In stock"}
+                              : "In stock"}
                           </span>
                         </td>
+
+                        {isManager && (
+                          <td className="inventory-actions-cell">
+                            {editingMaterialId === material.id ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn-secondary inventory-action-btn"
+                                  onClick={handleSaveMaterialEdit}
+                                  disabled={updatingMaterial}
+                                >
+                                  {updatingMaterial ? "Saving…" : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary inventory-action-btn"
+                                  onClick={cancelMaterialEdit}
+                                  disabled={updatingMaterial}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn-secondary inventory-action-btn"
+                                  onClick={() => startMaterialEdit(material)}
+                                  disabled={deletingMaterialId === material.id}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn-secondary inventory-action-btn danger"
+                                  onClick={() => handleDeleteMaterial(material)}
+                                  disabled={deletingMaterialId === material.id}
+                                >
+                                  {deletingMaterialId === material.id ? "Removing…" : "Remove"}
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
