@@ -14,7 +14,6 @@ import { useAuth } from "../contexts/AuthContext";
 import {
   MdDashboard,
   MdFolder,
-  MdInventory2,
   MdPeople,
   MdCalendarMonth,
   // MdBarChart,
@@ -26,7 +25,6 @@ import "../styles/Sidebar.css";
 const MANAGER_LINKS = [
   { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
   { name: "Projects", icon: MdFolder, path: "/projects" },
-  { name: "Inventory", icon: MdInventory2, path: "/materials" },
   { name: "Workers", icon: MdPeople, path: "/workers" },
   { name: "Shifts", icon: MdCalendarMonth, path: "/shifts" },
   // { name: "Reports", icon: MdBarChart, path: "/reports" },
@@ -36,7 +34,6 @@ const MANAGER_LINKS = [
 const WORKER_LINKS = [
   { name: "Dashboard", icon: MdDashboard, path: "/dashboard" },
   { name: "Projects", icon: MdFolder, path: "/projects" },
-  { name: "Inventory", icon: MdInventory2, path: "/materials" },
   { name: "Shifts", icon: MdCalendarMonth, path: "/shifts" },
   { name: "Settings", icon: MdSettings, path: "/settings" },
 ];
