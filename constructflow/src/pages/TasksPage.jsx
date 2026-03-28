@@ -15,6 +15,7 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
+import { listProjectMaterials } from "../utils/materialsRepository";
 import "../styles/TasksPage.css";
 
 const countBlueprintUnits = (objects = {}) => {
@@ -66,7 +67,10 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState([]);
   const [taskBlueprints, setTaskBlueprints] = useState([]);
   const [workers, setWorkers] = useState([]);
+  const [projectMaterials, setProjectMaterials] = useState([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [materialsError, setMaterialsError] = useState("");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -155,6 +159,26 @@ export default function TasksPage() {
   useEffect(() => {
     loadWorkers();
   }, [organizationId, isManager]);
+
+  const loadProjectMaterials = async () => {
+    if (!organizationId || !projectId) return;
+
+    setLoadingMaterials(true);
+    setMaterialsError("");
+    try {
+      const materials = await listProjectMaterials({ organizationId, projectId });
+      materials.sort((a, b) => a.name.localeCompare(b.name));
+      setProjectMaterials(materials);
+    } catch (err) {
+      console.error("Load project materials:", err);
+      setMaterialsError("Failed to load project inventory.");
+    }
+    setLoadingMaterials(false);
+  };
+
+  useEffect(() => {
+    loadProjectMaterials();
+  }, [organizationId, projectId]);
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
@@ -278,6 +302,70 @@ export default function TasksPage() {
               </button>
             </form>
           )}
+
+          <div className="project-inventory-section">
+            <div className="project-inventory-header">
+              <h3>Inventory</h3>
+              <p>
+                {isManager
+                  ? "Current stock available for this project."
+                  : "Materials currently available in this project."}
+              </p>
+            </div>
+
+            {loadingMaterials ? (
+              <div className="tasks-empty">Loading inventory…</div>
+            ) : materialsError ? (
+              <div className="tasks-empty tasks-empty-error">{materialsError}</div>
+            ) : projectMaterials.length === 0 ? (
+              <div className="tasks-empty">
+                No materials in this project yet.
+              </div>
+            ) : (
+              <div className="project-inventory-table-wrap">
+                <table className="project-inventory-table">
+                  <thead>
+                    <tr>
+                      <th>Material</th>
+                      <th>In Stock</th>
+                      <th>Threshold</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projectMaterials.map((material) => (
+                      <tr key={material.id}>
+                        <td>{material.name}</td>
+                        <td>
+                          {material.quantityOnHand} {material.unit}
+                        </td>
+                        <td>
+                          {material.minimumThreshold} {material.unit}
+                        </td>
+                        <td>
+                          <span
+                            className={`material-status-chip ${
+                              material.status === "depleted"
+                                ? "depleted"
+                                : material.quantityOnHand <= material.minimumThreshold
+                                  ? "low"
+                                  : "active"
+                            }`}
+                          >
+                            {material.status === "depleted"
+                              ? "Depleted"
+                              : material.quantityOnHand <= material.minimumThreshold
+                                ? "Low stock"
+                                : "In stock"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
           <div className="tasks-section">
             <h3>Task List</h3>

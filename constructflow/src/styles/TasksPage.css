@@ -71,6 +71,81 @@
   font-size: 13px;
 }
 
+.project-inventory-section {
+  margin-bottom: 22px;
+}
+
+.project-inventory-header {
+  margin-bottom: 10px;
+}
+
+.project-inventory-header h3 {
+  margin: 0;
+  color: #1a202c;
+}
+
+.project-inventory-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.project-inventory-table-wrap {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.project-inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+}
+
+.project-inventory-table th,
+.project-inventory-table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 14px;
+}
+
+.project-inventory-table th {
+  color: #475569;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.project-inventory-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.material-status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.material-status-chip.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.material-status-chip.low {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.material-status-chip.depleted {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .tasks-section h3 {
   margin: 0 0 12px;
   color: #1a202c;
@@ -181,6 +256,11 @@
   border-radius: 12px;
   padding: 18px;
   color: #64748b;
+}
+
+.tasks-empty-error {
+  border-color: #fecaca;
+  color: #b91c1c;
 }
 
 @media (max-width: 960px) {
