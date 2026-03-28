@@ -495,6 +495,37 @@
   color: #1e3a8a;
 }
 
+.worker-task-materials {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.worker-task-materials-empty {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.worker-task-material-chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-weight: 600;
+}
+
+.worker-task-materials-more {
+  font-size: 11px;
+  color: #475569;
+  font-weight: 600;
+}
+
 /* ── Loading rows ───────────────────────────────────────────────── */
 .loading-rows {
   display: flex;

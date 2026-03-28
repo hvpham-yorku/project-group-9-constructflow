@@ -30,6 +30,10 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import {
+  listProjectMaterials,
+  listTaskMaterialAllocations,
+} from "../utils/materialsRepository";
 import "../styles/Dashboard.css";
 
 const ROLE_LABELS = {
@@ -76,6 +80,7 @@ export default function WorkerDashboard() {
   const [clockActionLoading, setClockActionLoading] = useState(false);
   const [clockMessage, setClockMessage] = useState("");
   const [nowMs, setNowMs] = useState(INITIAL_NOW_MS);
+  const [taskMaterialsByTaskId, setTaskMaterialsByTaskId] = useState({});
 
   const currentUid = currentUser?.uid || null;
 
@@ -125,6 +130,52 @@ export default function WorkerDashboard() {
           )
           .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
         setTasks(taskList);
+
+        if (taskList.length === 0) {
+          setTaskMaterialsByTaskId({});
+        } else {
+          const uniqueProjectIds = Array.from(
+            new Set(taskList.map((task) => task.projectId).filter(Boolean)),
+          );
+
+          const materialMapsByProjectId = {};
+          await Promise.all(
+            uniqueProjectIds.map(async (pid) => {
+              const materials = await listProjectMaterials({
+                organizationId,
+                projectId: pid,
+              });
+              materialMapsByProjectId[pid] = Object.fromEntries(
+                materials.map((material) => [material.id, material]),
+              );
+            }),
+          );
+
+          const entries = await Promise.all(
+            taskList.map(async (task) => {
+              const allocations = await listTaskMaterialAllocations({
+                organizationId,
+                projectId: task.projectId,
+                taskId: task.id,
+              });
+
+              const materialsById = materialMapsByProjectId[task.projectId] || {};
+              const resolved = allocations.map((allocation) => {
+                const material = materialsById[allocation.materialId] || {};
+                return {
+                  materialId: allocation.materialId,
+                  quantityRequired: allocation.quantityRequired,
+                  materialName: material.name || "Material",
+                  unit: material.unit || "unit",
+                };
+              });
+
+              return [task.id, resolved];
+            }),
+          );
+
+          setTaskMaterialsByTaskId(Object.fromEntries(entries));
+        }
       } catch (err) {
         console.error("Worker dashboard load:", err);
       }
@@ -374,6 +425,7 @@ export default function WorkerDashboard() {
               <div className="recent-projects-list">
                 {tasks.map((task) => {
                   const statusLabel = task.completed ? "Done" : "Pending";
+                  const taskMaterials = taskMaterialsByTaskId[task.id] || [];
                   return (
                     <div
                       key={task.id}
@@ -406,6 +458,29 @@ export default function WorkerDashboard() {
                           <span style={{ fontSize: 12, color: "#718096" }}>
                             {statusLabel}
                           </span>
+                        </div>
+
+                        <div className="worker-task-materials">
+                          {taskMaterials.length === 0 ? (
+                            <span className="worker-task-materials-empty">
+                              No materials attached
+                            </span>
+                          ) : (
+                            taskMaterials.slice(0, 3).map((item) => (
+                              <span
+                                key={`${task.id}-${item.materialId}`}
+                                className="worker-task-material-chip"
+                              >
+                                {item.materialName}: {item.quantityRequired} {item.unit}
+                              </span>
+                            ))
+                          )}
+
+                          {taskMaterials.length > 3 && (
+                            <span className="worker-task-materials-more">
+                              +{taskMaterials.length - 3} more
+                            </span>
+                          )}
                         </div>
                       </div>
                       <span className="rp-arrow">
