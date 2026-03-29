@@ -46,12 +46,24 @@ const LS_KEY = "cf_last_blueprint_id";
 let _nextId = 1;
 const makeId = () => `obj-${Date.now()}-${_nextId++}`;
 
+const PLUMBING_PATH_TYPES = ["pipe", "hot_pipe", "cold_pipe", "drain_pipe"];
+const POINT_ASSIGNABLE_TYPES = [...PLUMBING_PATH_TYPES, "connection"];
+
+const TOOL_GROUP_DEFAULTS = {
+  plumbing: "hot_pipe",
+  electrical: "connection",
+};
+
+const TOOL_GROUP_FIXTURE_LABELS = {
+  plumbing: "Fixture",
+  electrical: "Breaker Panel",
+};
+
 // Type → trade mapping
 const TYPE_TRADE = {
   hot_pipe: "plumber",
   cold_pipe: "plumber",
   drain_pipe: "plumber",
-  fixture_area: "plumber",
   pipe: "plumber",
   connection: "electrician",
 };
@@ -60,59 +72,133 @@ const TYPE_LABELS = {
   hot_pipe: "Hot Water Pipe",
   cold_pipe: "Cold Water Pipe",
   drain_pipe: "Drainage Pipe",
-  fixture_area: "Fixture",
   pipe: "Hot Water Pipe",
   connection: "Wire",
 };
 
 const POINT_TASK_LABELS = {
-  valve: "Valve",
-  fixture: "Valve",
-  join_2_way: "2 Way Joints",
-  join_3_way: "3 Way Joints",
-  join_4_way: "4 Way Joints",
+  plumbing: {
+    valve: "Valve",
+    fixture: "Valve",
+    join_2_way: "2 Way Joints",
+    join_3_way: "3 Way Joints",
+    join_4_way: "4 Way Joints",
+  },
+  electrical: {
+    valve: "Light",
+    fixture: "Light",
+    join_2_way: "Switches",
+    join_3_way: "Outlet",
+    join_4_way: "Ethernet/Data Port",
+  },
 };
 
 const POINT_TOOL_TYPES = ["valve", "join_2_way", "join_3_way", "join_4_way"];
 
-const POINT_TOOL_BUTTONS = [
-  {
-    key: "valve",
-    label: "Valve",
-    className: "valve-btn",
-    iconClass: "valve-icon",
-    title: "Assign valve task to point",
-  },
-  {
-    key: "join_2_way",
-    label: "2 Way Joints",
-    className: "join-2-btn",
-    iconClass: "join-2-icon",
-    title: "Assign 2 way joints task to point",
-  },
-  {
-    key: "join_3_way",
-    label: "3 Way Joints",
-    className: "join-3-btn",
-    iconClass: "join-3-icon",
-    title: "Assign 3 way joints task to point",
-  },
-  {
-    key: "join_4_way",
-    label: "4 Way Joints",
-    className: "join-4-btn",
-    iconClass: "join-4-icon",
-    title: "Assign 4 way joints task to point",
-  },
-];
+const POINT_TOOL_BUTTONS = {
+  plumbing: [
+    {
+      key: "valve",
+      label: "Valve",
+      className: "valve-btn",
+      iconClass: "valve-icon",
+      title: "Assign valve task to pipe point",
+    },
+    {
+      key: "join_2_way",
+      label: "2 Way Joints",
+      className: "join-2-btn",
+      iconClass: "join-2-icon",
+      title: "Assign 2 way joints task to pipe point",
+    },
+    {
+      key: "join_3_way",
+      label: "3 Way Joints",
+      className: "join-3-btn",
+      iconClass: "join-3-icon",
+      title: "Assign 3 way joints task to pipe point",
+    },
+    {
+      key: "join_4_way",
+      label: "4 Way Joints",
+      className: "join-4-btn",
+      iconClass: "join-4-icon",
+      title: "Assign 4 way joints task to pipe point",
+    },
+  ],
+  electrical: [
+    {
+      key: "valve",
+      label: "Light",
+      className: "valve-btn",
+      iconClass: "valve-icon",
+      title: "Assign light task to wire point",
+    },
+    {
+      key: "join_2_way",
+      label: "Switches",
+      className: "join-2-btn",
+      iconClass: "join-2-icon",
+      title: "Assign switches task to wire point",
+    },
+    {
+      key: "join_3_way",
+      label: "Outlet",
+      className: "join-3-btn",
+      iconClass: "join-3-icon",
+      title: "Assign outlet task to wire point",
+    },
+    {
+      key: "join_4_way",
+      label: "Ethernet/Data Port",
+      className: "join-4-btn",
+      iconClass: "join-4-icon",
+      title: "Assign ethernet/data port task to wire point",
+    },
+  ],
+};
+
+const getObjectToolGroup = (obj) =>
+  obj?.toolGroup || (obj?.type === "connection" ? "electrical" : "plumbing");
+
+const getDefaultFixtureName = (toolGroup = "plumbing") =>
+  TOOL_GROUP_FIXTURE_LABELS[toolGroup] || TOOL_GROUP_FIXTURE_LABELS.plumbing;
+
+const getObjectTrade = (obj) => {
+  if (!obj) return null;
+  if (obj.type === "fixture_area") {
+    return getObjectToolGroup(obj) === "electrical"
+      ? "electrician"
+      : "plumber";
+  }
+  return TYPE_TRADE[obj.type] || null;
+};
+
+const getObjectTypeLabel = (obj) => {
+  if (!obj) return "";
+  if (obj.type === "fixture_area") {
+    return getDefaultFixtureName(getObjectToolGroup(obj));
+  }
+  return TYPE_LABELS[obj.type] || obj.type;
+};
+
+const getPointTaskLabel = (requiredType, toolGroup = "plumbing") => {
+  if (!requiredType) return null;
+  const labels = POINT_TASK_LABELS[toolGroup] || POINT_TASK_LABELS.plumbing;
+  return labels[requiredType] || requiredType;
+};
 
 const clampFixtureConnections = (value) =>
   Math.min(4, Math.max(1, Number(value) || 1));
 
-const pointChipLabel = (pointTasks = [], pointIndex = 0) => {
+const pointChipLabel = (
+  pointTasks = [],
+  pointIndex = 0,
+  toolGroup = "plumbing",
+) => {
   const task = pointTasks[pointIndex];
   if (!task?.requiredType) return `P${pointIndex + 1}`;
-  return POINT_TASK_LABELS[task.requiredType] || task.requiredType;
+  return getPointTaskLabel(task.requiredType, toolGroup);
 };
 
 const syncPointTasksWithPoints = (pointTasks = [], pointCount = 0) =>
@@ -146,20 +232,25 @@ const withComputedCompletion = (obj) => {
   };
 };
 
-const hydrateObject = (id, raw) =>
-  withComputedCompletion({
+const hydrateObject = (id, raw) => {
+  const toolGroup = getObjectToolGroup(raw);
+  return withComputedCompletion({
     id,
     type: raw.type,
+    toolGroup,
     pathPoints: raw.pathPoints || [],
     pointTasks: raw.pointTasks || [],
     rect: raw.rect || null,
-    fixtureName: raw.fixtureName || "",
+    fixtureName:
+      raw.fixtureName ||
+      (raw.type === "fixture_area" ? getDefaultFixtureName(toolGroup) : ""),
     connectionCount: clampFixtureConnections(raw.connectionCount || 1),
     assignedTo: raw.assignedTo || null,
     assignedToName: raw.assignedToName || null,
     completed: raw.completed || false,
     drawing: Boolean(raw.drawing),
   });
+};
 
 export default function BlueprintViewer() {
   const { currentUser, userProfile, isManager, organizationId } = useAuth();
@@ -184,7 +275,12 @@ export default function BlueprintViewer() {
   const [activeObjectId, setActiveObjectId] = useState(null);
   const [selectedObjectId, setSelectedObjectId] = useState(null);
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [activePlumbingTool, setActivePlumbingTool] = useState("hot_pipe");
+  const [activePlumbingTool, setActivePlumbingTool] = useState(
+    TOOL_GROUP_DEFAULTS.plumbing,
+  );
+  const [activeElectricalTool, setActiveElectricalTool] = useState(
+    TOOL_GROUP_DEFAULTS.electrical,
+  );
 
   // ── UI state ─────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(false);
@@ -361,7 +457,9 @@ export default function BlueprintViewer() {
     setActiveObjectId(null);
     setSelectedObjectId(null);
     setSelectedPoint(null);
-    setActivePlumbingTool("hot_pipe");
+    setActivePlumbingTool(TOOL_GROUP_DEFAULTS.plumbing);
+    setActiveElectricalTool(TOOL_GROUP_DEFAULTS.electrical);
+    setActiveToolGroup("plumbing");
     setBlueprintName(bp.name || "");
     setBlueprintImage(bp.imageUrl || null);
     setCurrentBlueprintId(bp.id);
@@ -420,6 +518,9 @@ export default function BlueprintViewer() {
     setBlueprintImage(null);
     setCurrentBlueprintId(null);
     setObjects([]);
+    setActivePlumbingTool(TOOL_GROUP_DEFAULTS.plumbing);
+    setActiveElectricalTool(TOOL_GROUP_DEFAULTS.electrical);
+    setActiveToolGroup("plumbing");
     setObjectsInitialized(false);
     setIsDirty(false);
     localStorage.removeItem(LS_KEY);
@@ -455,15 +556,18 @@ export default function BlueprintViewer() {
     }
     if (activeObjectId) cancelActiveDrawing();
     const id = makeId();
+    const toolGroup = activeToolGroup;
     setObjects((prev) => [
       ...prev,
       withComputedCompletion({
         id,
         type,
+        toolGroup,
         pathPoints: [],
         pointTasks: [],
         rect: null,
-        fixtureName: type === "fixture_area" ? "Fixture" : "",
+        fixtureName:
+          type === "fixture_area" ? getDefaultFixtureName(toolGroup) : "",
         connectionCount: 1,
         assignedTo: null,
         assignedToName: null,
@@ -471,12 +575,10 @@ export default function BlueprintViewer() {
         drawing: true,
       }),
     ]);
-    if (
-      ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "fixture_area"].includes(
-        type,
-      )
-    ) {
+    if (toolGroup === "plumbing") {
       setActivePlumbingTool(type);
+    } else if (["connection", "fixture_area"].includes(type)) {
+      setActiveElectricalTool(type);
     }
     setSelectedPoint(null);
     setActiveObjectId(id);
@@ -561,6 +663,7 @@ export default function BlueprintViewer() {
       updatedObjects[updatedObj.id] = {
         ...updatedObjects[updatedObj.id],
         type: updatedObj.type,
+        toolGroup: updatedObj.toolGroup || getObjectToolGroup(updatedObj),
         pathPoints: updatedObj.pathPoints,
         pointTasks: updatedObj.pointTasks || [],
         rect: updatedObj.rect || null,
@@ -589,7 +692,7 @@ export default function BlueprintViewer() {
     setObjects((prev) =>
       prev.map((obj) => {
         if (obj.id !== objId) return obj;
-        if (!["pipe", "hot_pipe", "cold_pipe", "drain_pipe"].includes(obj.type))
+        if (!POINT_ASSIGNABLE_TYPES.includes(obj.type))
           return obj;
         const pointTasks = syncPointTasksWithPoints(
           obj.pointTasks,
@@ -636,10 +739,7 @@ export default function BlueprintViewer() {
   const handlePointToolHover = (objId, pointIndex, tool) => {
     if (!isManager || !POINT_TOOL_TYPES.includes(tool)) return;
     const obj = objects.find((item) => item.id === objId);
-    if (
-      !obj ||
-      !["pipe", "hot_pipe", "cold_pipe", "drain_pipe"].includes(obj.type)
-    )
+    if (!obj || !POINT_ASSIGNABLE_TYPES.includes(obj.type))
       return;
     const existingTask = obj.pointTasks?.[pointIndex];
     if (existingTask?.requiredType === tool) return;
@@ -698,6 +798,7 @@ export default function BlueprintViewer() {
       objects.forEach((obj) => {
         objectsMap[obj.id] = {
           type: obj.type,
+          toolGroup: obj.toolGroup || getObjectToolGroup(obj),
           pathPoints: obj.pathPoints,
           pointTasks: obj.pointTasks || [],
           rect: obj.rect || null,
@@ -739,20 +840,28 @@ export default function BlueprintViewer() {
   };
 
   // ── Derived ───────────────────────────────────────────────────────
-  const activeType = activeObjectId
-    ? objects.find((o) => o.id === activeObjectId)?.type
+  const activeObject = activeObjectId
+    ? objects.find((o) => o.id === activeObjectId) || null
     : null;
+  const activeType = activeObject?.type || null;
+  const activeDrawingGroup = activeObject ? getObjectToolGroup(activeObject) : null;
   const isDrawingHotPipe = activeType === "hot_pipe" || activeType === "pipe";
   const isDrawingColdPipe = activeType === "cold_pipe";
   const isDrawingDrainPipe = activeType === "drain_pipe";
-  const isDrawingFixtureArea = activeType === "fixture_area";
+  const isDrawingPlumbingFixtureArea =
+    activeType === "fixture_area" && activeDrawingGroup === "plumbing";
+  const isDrawingElectricalFixtureArea =
+    activeType === "fixture_area" && activeDrawingGroup === "electrical";
   const isDrawingConnection = activeType === "connection";
   const activePointTool =
-    isManager &&
-    activeToolGroup === "plumbing" &&
-    !activeObjectId &&
-    POINT_TOOL_TYPES.includes(activePlumbingTool)
-      ? activePlumbingTool
+    isManager && !activeObjectId
+      ? activeToolGroup === "plumbing"
+        ? POINT_TOOL_TYPES.includes(activePlumbingTool)
+          ? activePlumbingTool
+          : null
+        : POINT_TOOL_TYPES.includes(activeElectricalTool)
+          ? activeElectricalTool
+          : null
       : null;
 
   const selectToolGroup = (group) => {
@@ -768,23 +877,33 @@ export default function BlueprintViewer() {
         ...POINT_TOOL_TYPES,
       ].includes(activePlumbingTool)
     ) {
-      setActivePlumbingTool("hot_pipe");
+      setActivePlumbingTool(TOOL_GROUP_DEFAULTS.plumbing);
+    }
+    if (
+      group === "electrical" &&
+      !["connection", "fixture_area", ...POINT_TOOL_TYPES].includes(
+        activeElectricalTool,
+      )
+    ) {
+      setActiveElectricalTool(TOOL_GROUP_DEFAULTS.electrical);
     }
   };
 
   useEffect(() => {
-    if (!activeType) return;
-    if (
-      ["pipe", "hot_pipe", "cold_pipe", "drain_pipe", "fixture_area"].includes(
-        activeType,
-      )
-    ) {
-      setActiveToolGroup("plumbing");
-      setActivePlumbingTool(activeType);
+    if (!activeType || !activeDrawingGroup) return;
+    setActiveToolGroup(activeDrawingGroup);
+    if (activeDrawingGroup === "plumbing") {
+      if ([...PLUMBING_PATH_TYPES, "fixture_area"].includes(activeType)) {
+        setActivePlumbingTool(
+          activeType === "pipe" ? TOOL_GROUP_DEFAULTS.plumbing : activeType,
+        );
+      }
       return;
     }
-    setActiveToolGroup("electrical");
-  }, [activeType]);
+    if (["connection", "fixture_area"].includes(activeType)) {
+      setActiveElectricalTool(activeType);
+    }
+  }, [activeDrawingGroup, activeType]);
 
   const canvasObjects = objects.map((obj) => ({
     ...obj,
@@ -799,8 +918,7 @@ export default function BlueprintViewer() {
         ? objects
         : objects.filter(
             (o) =>
-              o.type === "fixture_area" ||
-              TYPE_TRADE[o.type] === workerTrade ||
+              getObjectTrade(o) === workerTrade ||
               (currentUid !== null && o.assignedTo === currentUid),
           )
       : objects;
@@ -1057,10 +1175,10 @@ export default function BlueprintViewer() {
                     </button>
 
                     <button
-                      className={`btn-secondary draw-btn fixture-area-btn${isDrawingFixtureArea ? " active" : ""}`}
+                      className={`btn-secondary draw-btn fixture-area-btn${isDrawingPlumbingFixtureArea ? " active" : ""}`}
                       onClick={() => {
                         setActivePlumbingTool("fixture_area");
-                        isDrawingFixtureArea
+                        isDrawingPlumbingFixtureArea
                           ? cancelActiveDrawing()
                           : startDrawing("fixture_area");
                       }}
@@ -1068,10 +1186,12 @@ export default function BlueprintViewer() {
                       title="Select fixture rectangle tool"
                     >
                       <span className="draw-icon fixture-area-icon" />
-                      {isDrawingFixtureArea ? "Cancel Fixture" : "Fixture"}
+                      {isDrawingPlumbingFixtureArea
+                        ? "Cancel Fixture"
+                        : "Fixture"}
                     </button>
 
-                    {POINT_TOOL_BUTTONS.map((toolButton) => {
+                    {POINT_TOOL_BUTTONS.plumbing.map((toolButton) => {
                       const isActive = activePointTool === toolButton.key;
                       return (
                         <button
@@ -1093,24 +1213,65 @@ export default function BlueprintViewer() {
                     })}
                   </>
                 ) : (
-                  <button
-                    className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
-                    onClick={() =>
-                      isDrawingConnection
-                        ? cancelActiveDrawing()
-                        : startDrawing("connection")
-                    }
-                    disabled={!blueprintImage}
-                    title="Select wire tool"
-                  >
-                    <span className="draw-icon connection-icon" />
-                    {isDrawingConnection ? "Cancel Wire" : "Wire"}
-                  </button>
+                  <>
+                    <button
+                      className={`btn-secondary draw-btn connection-btn${isDrawingConnection ? " active" : ""}`}
+                      onClick={() => {
+                        setActiveElectricalTool("connection");
+                        isDrawingConnection
+                          ? cancelActiveDrawing()
+                          : startDrawing("connection");
+                      }}
+                      disabled={!blueprintImage}
+                      title="Select wire tool"
+                    >
+                      <span className="draw-icon connection-icon" />
+                      {isDrawingConnection ? "Cancel Wire" : "Wire"}
+                    </button>
+                    <button
+                      className={`btn-secondary draw-btn fixture-area-btn${isDrawingElectricalFixtureArea ? " active" : ""}`}
+                      onClick={() => {
+                        setActiveElectricalTool("fixture_area");
+                        isDrawingElectricalFixtureArea
+                          ? cancelActiveDrawing()
+                          : startDrawing("fixture_area");
+                      }}
+                      disabled={!blueprintImage}
+                      title="Select breaker panel rectangle tool"
+                    >
+                      <span className="draw-icon fixture-area-icon" />
+                      {isDrawingElectricalFixtureArea
+                        ? "Cancel Breaker Panel"
+                        : "Breaker Panel"}
+                    </button>
+
+                    {POINT_TOOL_BUTTONS.electrical.map((toolButton) => {
+                      const isActive = activePointTool === toolButton.key;
+                      return (
+                        <button
+                          key={toolButton.key}
+                          className={`btn-secondary draw-btn ${toolButton.className}${isActive ? " active" : ""}`}
+                          onClick={() => {
+                            if (activeObjectId) cancelActiveDrawing();
+                            setActiveElectricalTool(toolButton.key);
+                          }}
+                          disabled={!blueprintImage}
+                          title={toolButton.title}
+                        >
+                          <span
+                            className={`draw-icon ${toolButton.iconClass}`}
+                          />
+                          {toolButton.label}
+                        </button>
+                      );
+                    })}
+                  </>
                 )}
 
                 <span className="tool-ribbon-note">
-                  Draw fixture rectangles, then click pipe points to assign
-                  valve/join tasks
+                  {activeToolGroup === "plumbing"
+                    ? "Draw fixture rectangles, then click pipe points to assign valve/joint tasks"
+                    : "Draw breaker panels, then click wire points to assign light, switches, outlet, and ethernet/data port tasks"}
                 </span>
               </div>
             </div>
@@ -1172,7 +1333,7 @@ export default function BlueprintViewer() {
                         No elements yet.
                         <br />
                         Upload an image then choose a tool and draw
-                        hot/cold/drainage pipes or wires.
+                        plumbing or electrical elements.
                       </>
                     ) : (
                       "Select a blueprint to view elements."
@@ -1201,7 +1362,7 @@ export default function BlueprintViewer() {
                             className={`type-dot ${obj.type}${isOwn ? " own" : ""}`}
                           />
                           <span className="section-type-label">
-                            {TYPE_LABELS[obj.type] || obj.type}
+                            {getObjectTypeLabel(obj)}
                             {obj.drawing && (
                               <span className="drawing-badge">
                                 <MdEdit
@@ -1284,7 +1445,7 @@ export default function BlueprintViewer() {
                                 className="fixture-name-input"
                                 type="text"
                                 value={obj.fixtureName || ""}
-                                placeholder="Fixture name"
+                                placeholder={`${getDefaultFixtureName(getObjectToolGroup(obj))} name`}
                                 onClick={(e) => e.stopPropagation()}
                                 onChange={(e) =>
                                   updateFixtureConfig(obj.id, {
@@ -1313,7 +1474,9 @@ export default function BlueprintViewer() {
                             </>
                           ) : (
                             <p className="fixture-readonly-name">
-                              {obj.fixtureName?.trim() || "Fixture"} ·{" "}
+                              {obj.fixtureName?.trim() ||
+                                getDefaultFixtureName(getObjectToolGroup(obj))}{" "}
+                              ·{" "}
                               {clampFixtureConnections(
                                 obj.connectionCount || 1,
                               )}{" "}
@@ -1373,6 +1536,7 @@ export default function BlueprintViewer() {
                                   {pointChipLabel(
                                     obj.pointTasks || [],
                                     pointIndex,
+                                    getObjectToolGroup(obj),
                                   )}
                                 </button>
 
@@ -1405,9 +1569,10 @@ export default function BlueprintViewer() {
                                   >
                                     {pointTask.instructions?.trim() ||
                                       (pointTask.requiredType
-                                        ? POINT_TASK_LABELS[
-                                            pointTask.requiredType
-                                          ] || pointTask.requiredType
+                                        ? getPointTaskLabel(
+                                            pointTask.requiredType,
+                                            getObjectToolGroup(obj),
+                                          )
                                         : "No task")}
                                   </span>
                                 )}
