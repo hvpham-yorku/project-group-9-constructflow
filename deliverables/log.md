@@ -9,8 +9,9 @@ Discussed ITR0 objectives, and brainstormed user stories. Then, divided work bet
 
 ### Jan 20, 2026
 
-Meeting lasted **2 hours**.   
-- Setup GitHub, and Jira, 
+Meeting lasted **2 hours**.
+
+- Setup GitHub, and Jira,
 - Define project scope, and decide the pitch to customer
 - Come up with user stories
 - Decide the tech stack for the project
@@ -18,7 +19,7 @@ Meeting lasted **2 hours**.
 
 ### Jan 28, 2026
 
-Meeting lasted **7 minutes**.   
+Meeting lasted **7 minutes**.  
 Reviewed the work done for ITR0, then submitted.
 
 ### Feb 3, 2026
@@ -28,7 +29,8 @@ Started coding, and creating React components.
 
 ### Feb 13, 2026
 
-Meeting lasted **16 minutes**.  
+Meeting lasted **16 minutes**.
+
 - Discussed ITR1 requiremnts
 - Reviewed work done so far
 - Discussed the creation of GitHub Wiki
@@ -36,12 +38,14 @@ Meeting lasted **16 minutes**.
 ### Feb 28, 2026
 
 Meeting lasted **1 hour**.
+
 - Discussed the current state of the project, and decided on some fixes
 - Login/Signup UI changes
 
 ### Mar 1, 2026
 
 Meeting lasted **1 hour**.
+
 - Made final changes to the project for presentation
 - Worked on the presentation slides
 - Worked on the peer review form
@@ -49,14 +53,60 @@ Meeting lasted **1 hour**.
 ### Mar 12, 2026
 
 Meeting lasted **18 minutes**.
+
 - Planned out ITR2 user stories, will meet tomorrow to finalize
 
 ### Mar 13, 2026
 
 Meeting lasted **31 minutes**.
-- Distributed work based on user stories 
+
+- Distributed work based on user stories
 
 Things to implement:
+
 - Materials tracking
 - Workers time tracking
 - Project progress tracking
+
+### Mar 15, 2026
+
+Meeting lasted **22 minutes**.
+
+- Progress meeting, also verified some functionality
+
+### Mar 19, 2026
+
+Meeting lasted **14 minutes**.
+
+- Verification on how project progress tracking should be implemented
+
+### Mar 20, 2026
+
+Meeting lasted **15 minutes**.
+
+- Further verification on how project progress tracking should be implemented
+
+### Mar 22, 2026
+
+Meeting lasted **19 minutes**.
+
+- Progress update
+
+### Mar 25, 2026
+
+Meeting lasted **28 minutes**.
+
+- Verified updates, and got started on presentation slides
+
+### Mar 27, 2026
+
+Meeting lasted **37 minutes**.
+
+- Verified clock in/out functionality
+
+### Mar 28, 2026
+
+Meeting lasted **33 minutes**.
+
+- Verified materials tracking functionality
+- Created the 3-layer software architecture sketch
