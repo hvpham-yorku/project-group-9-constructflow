@@ -111,7 +111,20 @@ Meeting lasted **33 minutes**.
 - Verified materials tracking functionality
 - Created the 3-layer software architecture sketch
 
-ITR3
+### Mar 28, 2026
+
+Meeting lasted **33 minutes**.
+
+- Verified materials tracking functionality
+- Created the 3-layer software architecture sketch
+
+### Mar 29, 2026
+
+Meeting lasted **157 minutes**.
+
+- Worked on the presentation
+
+## ITR3 (Lab Test 5)
 
 Manual End-to-End Customer Tests: Materials Tracking & Inventory Management
 
