@@ -1,0 +1,333 @@
+@startuml ConstructFlow Class Diagram
+left to right direction
+skinparam roundcorner 8
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+
+title ConstructFlow - Class Diagram
+
+package "Identity & Organization" {
+  class UserProfile {
+    +uid: string
+    +email: string
+    +name: string
+    +role: Role
+    +organizationId: string?
+    +createdAt: datetime
+  }
+
+  class Organization {
+    +id: string
+    +name: string
+    +managerId: string
+    +managerName: string
+    +inviteCode: string
+    +inviteCodeExpiresAt: datetime
+    +createdAt: datetime
+    +members: Map<string, MemberMeta>
+  }
+
+  class MemberMeta {
+    +name: string
+    +role: Role
+    +joinedAt: datetime
+  }
+
+  enum Role {
+    general
+    manager
+    electrician
+    plumber
+  }
+}
+
+package "Projects & Tasks" {
+  class Project {
+    +id: string
+    +name: string
+    +description: string
+    +organizationId: string
+    +managerId: string
+    +status: ProjectStatus
+    +completion: number
+    +createdAt: datetime
+  }
+
+  class Task {
+    +id: string
+    +projectId: string
+    +organizationId: string
+    +title: string
+    +description: string
+    +dueDate: date
+    +assignedWorkerId: string
+    +assignedWorkerName: string
+    +createdBy: string
+    +createdAt: datetime
+    +completed: boolean
+  }
+
+  enum ProjectStatus {
+    active
+    completed
+    pending
+  }
+}
+
+package "Blueprint Modeling" {
+  class Blueprint {
+    +id: string
+    +name: string
+    +imageUrl: string
+    +projectId: string
+    +taskId: string
+    +organizationId: string
+    +objects: Map<string, BlueprintObject>
+    +createdAt: datetime
+    +updatedAt: datetime
+  }
+
+  class BlueprintObject {
+    +id: string
+    +type: ObjectType
+    +pathPoints: Point[*]
+    +pointTasks: PointTask[*]
+    +rect: Rect
+    +fixtureName: string
+    +connectionCount: int
+    +assignedTo: string
+    +assignedToName: string
+    +completed: boolean
+  }
+
+  class PointTask {
+    +requiredType: string
+    +completed: boolean
+    +instructions: string
+  }
+
+  class Point {
+    +x: number
+    +y: number
+  }
+
+  class Rect {
+    +x: number
+    +y: number
+    +width: number
+    +height: number
+  }
+
+  enum ObjectType {
+    hot_pipe
+    cold_pipe
+    drain_pipe
+    fixture_area
+    connection
+    pipe
+  }
+}
+
+package "Materials & Inventory" {
+  class Material {
+    +id: string
+    +organizationId: string
+    +projectId: string
+    +name: string
+    +unit: string
+    +quantityOnHand: number
+    +minimumThreshold: number
+    +status: MaterialStatus
+    +updatedAt: datetime
+  }
+
+  class TaskMaterialAllocation {
+    +id: string
+    +organizationId: string
+    +projectId: string
+    +taskId: string
+    +materialId: string
+    +quantityRequired: number
+    +createdAt: datetime
+    +updatedAt: datetime
+  }
+
+  class MaterialTransaction {
+    +id: string
+    +organizationId: string
+    +projectId: string
+    +taskId: string?
+    +materialId: string
+    +type: MaterialTransactionType
+    +quantityDelta: number
+    +beforeQty: number
+    +afterQty: number
+    +performedBy: string
+    +performedAt: datetime
+    +note: string
+  }
+
+  enum MaterialStatus {
+    active
+    depleted
+  }
+
+  enum MaterialTransactionType {
+    TASK_ASSIGNMENT_DEDUCTION
+    RESTOCK
+    MANUAL_ADJUSTMENT
+  }
+}
+
+package "Scheduling & Attendance" {
+  class Shift {
+    +id: string
+    +organizationId: string
+    +workerId: string
+    +startTime: datetime
+    +endTime: datetime
+    +status: ShiftStatus
+    +createdAt: datetime
+    +createdBy: string
+  }
+
+  class AttendanceEntry {
+    +id: string
+    +organizationId: string
+    +workerId: string
+    +date: string
+    +clockIn: datetime
+    +clockOut: datetime
+  }
+
+  enum ShiftStatus {
+    draft
+    published
+  }
+}
+
+package "Application Support" {
+  class AuthContext {
+    +currentUser: UserProfile
+    +userProfile: UserProfile
+    +loading: boolean
+    +signup(email, password, name)
+    +login(email, password)
+    +logout()
+    +refreshProfile()
+    +updateUserProfile(fields)
+  }
+
+  class MaterialsRepository {
+    +listProjectMaterials(organizationId, projectId)
+    +listTaskMaterialAllocations(organizationId, projectId, taskId)
+    +createMaterial(data)
+    +updateMaterial(id, data)
+    +removeMaterial(id)
+    +assignMaterialsToTaskWithDeduction(...)
+    +listProjectMaterialTransactions(...)
+  }
+
+  class InventoryDomain {
+    +normalizeInventoryMaterial(raw)
+    +normalizeTaskAllocation(raw)
+    +mergeAllocationsByMaterial(allocations)
+    +validateAssignmentDeduction(inventory, allocations)
+    +applyAssignmentDeduction(inventory, allocations)
+  }
+}
+
+' Core organization structure
+Organization "1" o-- "*" MemberMeta : members
+Organization "1" --> "*" UserProfile : contains
+Organization "1" --> "*" Project : owns
+Organization "1" --> "*" Task : scopes
+Organization "1" --> "*" Blueprint : scopes
+Organization "1" --> "*" Material : owns inventory
+Organization "1" --> "*" Shift : schedules
+Organization "1" --> "*" AttendanceEntry : tracks
+
+' Project and task structure
+Project "1" --> "*" Task : has
+Project "1" --> "*" Blueprint : has
+Project "1" --> "*" Material : stocks
+
+UserProfile "1" --> "*" Task : assignedWorker
+UserProfile "1" --> "*" Shift : works
+UserProfile "1" --> "*" AttendanceEntry : records
+
+' Blueprint structure
+Task "0..1" --> "*" Blueprint : task scope
+Blueprint "1" *-- "*" BlueprintObject : objects
+BlueprintObject "1" *-- "*" Point : pathPoints
+BlueprintObject "1" *-- "*" PointTask : pointTasks
+BlueprintObject "1" *-- "0..1" Rect : fixtureBounds
+BlueprintObject "*" --> "0..1" UserProfile : assignedTo
+
+' Inventory structure
+Task "1" --> "*" TaskMaterialAllocation : requires
+Material "1" --> "*" TaskMaterialAllocation : allocated as
+Material "1" --> "*" MaterialTransaction : logged by
+Task "0..1" --> "*" MaterialTransaction : consumption log
+UserProfile "1" --> "*" MaterialTransaction : performedBy
+
+' Application support dependencies
+AuthContext ..> UserProfile : manages
+MaterialsRepository ..> Material : CRUD
+MaterialsRepository ..> TaskMaterialAllocation : allocates
+MaterialsRepository ..> MaterialTransaction : records
+MaterialsRepository ..> InventoryDomain : uses rules
+
+note right of Organization
+Firestore collection:
+organizations/{id}
+end note
+
+note right of UserProfile
+Firestore collection:
+users/{uid}
+end note
+
+note right of Project
+Firestore collection:
+projects/{id}
+end note
+
+note right of Task
+Firestore collection:
+tasks/{id}
+end note
+
+note right of Blueprint
+Firestore collection:
+blueprints/{id}
+end note
+
+note right of Material
+Firestore collection:
+materials/{id}
+end note
+
+note right of TaskMaterialAllocation
+Firestore collection:
+taskMaterialAllocations/{taskId_materialId}
+end note
+
+note right of MaterialTransaction
+Firestore collection:
+materialTransactions/{id}
+end note
+
+note right of Shift
+Firestore collection:
+shifts/{id}
+end note
+
+note right of AttendanceEntry
+Firestore collection:
+attendance/{workerId_dayKey}
+end note
+
+@enduml
