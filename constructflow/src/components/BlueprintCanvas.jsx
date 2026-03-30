@@ -405,7 +405,6 @@ function BlueprintCanvas({
     if (onObjectUpdate) {
       onObjectUpdate(activeObjectId, {
         rect,
-        fixtureName: "Fixture",
         connectionCount: 1,
       });
     }

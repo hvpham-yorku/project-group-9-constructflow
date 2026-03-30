@@ -73,7 +73,7 @@ function LoginPage() {
             <img src="/favicon.svg" alt="ConstructFlow logo" className="login-brand-logo" />
           </div>
           <h1>ConstructFlow</h1>
-          <p>Construction Project Management</p>
+          <p>Work Management System for Electricians & Plumbers</p>
         </div>
 
         {/* ── Heading ── */}

@@ -1,0 +1,53 @@
+@startuml
+title ConstructFlow - 3-Layer Software Architecture
+left to right direction
+skinparam roundcorner 8
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+rectangle "Presentation" as Presentation
+rectangle "Business Logic" as Business
+rectangle "Persistence" as Persistence
+rectangle "Specific DBMS Processing\n(Firebase SDK Calls)" as DBMS
+database "DB\n(Firestore + Storage + Auth)" as DB
+rectangle "Domain Objects\nUser, Organization, Project, Task,\nBlueprint, Material, Allocation, Transaction" as Domain
+
+Presentation --> Business : Request object
+Business --> Presentation : Result (collection of objects)
+
+Business --> Persistence : Request object
+Persistence --> Business : Result (collection of objects)
+
+Persistence <--> DBMS
+DBMS <--> DB
+
+Domain -up-> Presentation
+Domain -up-> Business
+Domain -up-> Persistence
+
+note bottom of Presentation
+Files:
+
+src/main.jsx
+src/App.jsx
+src/pages/*
+src/components/*
+src/styles/*
+src/App.css
+src/index.css
+end note
+note bottom of Business
+Files:
+
+src/contexts/AuthContext.jsx
+src/utils/inventoryDomain.js
+src/utils/materialsConstants.js
+end note
+note bottom of Persistence
+Files:
+
+src/firebase.js
+src/utils/materialsRepository.js
+end note
+
+@enduml

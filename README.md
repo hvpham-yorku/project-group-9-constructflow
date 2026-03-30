@@ -9,25 +9,29 @@ Customer meeting’s summary video: https://youtu.be/ytbclsm6Geg [![YouTube](htt
 
 ### ITR1
 
-[log.md](deliverables/log.md) is in the `deliverables` folder.  
+[log.md](deliverables/log.md) is in the `deliverables` folder.
 
-"Planning Document.pdf" has been revised. New document is in the `deliverables` folder titled [PlanningDocument-UpdatedMarch1.pdf](deliverables/PlanningDocument-UpdatedMarch1.pdf).   
+"Planning Document.pdf" has been revised. New document is in the `deliverables` folder titled [PlanningDocument-UpdatedMarch1.pdf](deliverables/PlanningDocument-UpdatedMarch1.pdf).  
 Change made:  
 Blueprint is used as a helper for the tasks assigned, rather than it serving as the main workspace. Our customer suggested using the blueprint feature as an addition to assigning tasks to promote better organization and clarity. Having the blueprint as the main workspace would cause confusion for the workers.
 
 ### Delivery 1
 
-[Peer evaluation form](deliverables/EECS2311Z-Delivery1-PeerReview-Group9.pdf) is in the `deliverables` folder.  
+[Peer evaluation form](deliverables/EECS2311Z-Delivery1-PeerReview-Group9.pdf) is in the `deliverables` folder.
 
 ### ITR2
 
-Updated user stories: [ITR2-user-stories](deliverables/ITR2-user-stories.pdf)   
+Updated user stories: [ITR2-user-stories](deliverables/ITR2-user-stories.pdf)
 
 #### UML Class Diagram
 
 The UML class diagram was created using [Plant UML](https://plantuml.com/).  
 Here is the code: [uml-class-diagram.puml](deliverables/uml-class-diagram.puml).  
-Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).  
+Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).
+
+### ITR3
+
+### Delivery 2
 
 ---
 
@@ -35,9 +39,14 @@ Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).
 
 A work management system for plumbing and electrical work in construction.
 
+## 3-layer Architecture Sketch
+
+![3-layer Architecture Image](deliverables/architecture-sketch.png)
+
 ## How to run
 
 To run the app locally:
+
 ```bash
 cd constructflow
 ```

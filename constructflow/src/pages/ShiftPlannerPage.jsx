@@ -283,15 +283,28 @@ export default function ShiftPlannerPage() {
     setSavingShift(true);
     setSaveMessage("");
     try {
-      const uniqueDays = new Set();
+      const shiftsByDayMap = new Map();
       for (const shift of draftShifts) {
         const key = toDayKey(shift.start);
-        if (uniqueDays.has(key)) {
-          setSaveMessage("Only one shift per worker per day is allowed.");
+        if (!shiftsByDayMap.has(key)) shiftsByDayMap.set(key, []);
+        shiftsByDayMap.get(key).push(shift);
+      }
+      for (const [, dayShifts] of shiftsByDayMap) {
+        const sorted = [...dayShifts].sort((a, b) => a.start - b.start);
+        let totalHours = 0;
+        for (let i = 0; i < sorted.length; i++) {
+          if (i > 0 && sorted[i].start < sorted[i - 1].end) {
+            setSaveMessage("Shifts overlap on the same day.");
+            setSavingShift(false);
+            return;
+          }
+          totalHours += (sorted[i].end - sorted[i].start) / (1000 * 60 * 60);
+        }
+        if (totalHours > 8) {
+          setSaveMessage("Total shift hours exceed 8 hours on the same day.");
           setSavingShift(false);
           return;
         }
-        uniqueDays.add(key);
       }
 
       await Promise.all(
@@ -372,11 +385,29 @@ export default function ShiftPlannerPage() {
       endDate.setHours(draftRange.endHour, 0, 0, 0);
 
       const dayKey = toDayKey(startDate);
-      const alreadyHasShiftForDay = draftShifts.some(
+      const dayShifts = draftShifts.filter(
         (shift) => toDayKey(shift.start) === dayKey,
       );
-      if (alreadyHasShiftForDay) {
-        alert("Only one shift per worker per day is allowed.");
+
+      const hasOverlap = dayShifts.some(
+        (shift) => startDate < shift.end && endDate > shift.start,
+      );
+      if (hasOverlap) {
+        alert("This shift overlaps with an existing shift on the same day.");
+        setDragStart(null);
+        setDragCurrentHour(null);
+        return;
+      }
+
+      const newHours = (endDate - startDate) / (1000 * 60 * 60);
+      const existingHours = dayShifts.reduce(
+        (sum, shift) => sum + (shift.end - shift.start) / (1000 * 60 * 60),
+        0,
+      );
+      if (existingHours + newHours > 8) {
+        alert(
+          `Adding this shift would exceed 8 hours for this day. Already scheduled: ${existingHours}h.`,
+        );
         setDragStart(null);
         setDragCurrentHour(null);
         return;
