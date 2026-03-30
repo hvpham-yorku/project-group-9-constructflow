@@ -15,6 +15,18 @@ import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebase";
+import {
+  addDays,
+  formatHour,
+  formatShiftRange,
+  startOfWeek,
+  toDate,
+  toDayKey,
+} from "../utils/dateTime";
+import {
+  SHIFT_VALIDATION_ERROR,
+  validateShiftsForDay,
+} from "../utils/shiftValidation";
 import "../styles/ShiftPlanner.css";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -22,46 +34,6 @@ const ROLE_LABELS = {
   electrician: "Electrician",
   plumber: "Plumber",
 };
-
-function startOfWeek(date) {
-  const base = new Date(date);
-  const day = base.getDay();
-  const mondayOffset = day === 0 ? -6 : 1 - day;
-  base.setHours(0, 0, 0, 0);
-  base.setDate(base.getDate() + mondayOffset);
-  return base;
-}
-
-function addDays(date, days) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + days);
-  return next;
-}
-
-function toDate(value) {
-  if (!value) return null;
-  if (typeof value?.toDate === "function") return value.toDate();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatHour(hour) {
-  const suffix = hour >= 12 ? "PM" : "AM";
-  const normalized = hour % 12 === 0 ? 12 : hour % 12;
-  return `${normalized}:00 ${suffix}`;
-}
-
-function formatShiftRange(start, end) {
-  return `${start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} - ${end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function toDayKey(date) {
-  const d = new Date(date);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 export default function ShiftPlannerPage() {
   const { currentUser, organizationId } = useAuth();
@@ -290,20 +262,18 @@ export default function ShiftPlannerPage() {
         shiftsByDayMap.get(key).push(shift);
       }
       for (const [, dayShifts] of shiftsByDayMap) {
-        const sorted = [...dayShifts].sort((a, b) => a.start - b.start);
-        let totalHours = 0;
-        for (let i = 0; i < sorted.length; i++) {
-          if (i > 0 && sorted[i].start < sorted[i - 1].end) {
+        const validation = validateShiftsForDay(dayShifts);
+        if (!validation.ok) {
+          if (validation.code === SHIFT_VALIDATION_ERROR.OVERLAP) {
             setSaveMessage("Shifts overlap on the same day.");
             setSavingShift(false);
             return;
           }
-          totalHours += (sorted[i].end - sorted[i].start) / (1000 * 60 * 60);
-        }
-        if (totalHours > 8) {
+          if (validation.code === SHIFT_VALIDATION_ERROR.EXCEEDS_HOURS) {
           setSaveMessage("Total shift hours exceed 8 hours on the same day.");
           setSavingShift(false);
           return;
+          }
         }
       }
 
@@ -389,10 +359,9 @@ export default function ShiftPlannerPage() {
         (shift) => toDayKey(shift.start) === dayKey,
       );
 
-      const hasOverlap = dayShifts.some(
-        (shift) => startDate < shift.end && endDate > shift.start,
-      );
-      if (hasOverlap) {
+      const nextDayShifts = [...dayShifts, { start: startDate, end: endDate }];
+      const validation = validateShiftsForDay(nextDayShifts);
+      if (!validation.ok && validation.code === SHIFT_VALIDATION_ERROR.OVERLAP) {
         alert("This shift overlaps with an existing shift on the same day.");
         setDragStart(null);
         setDragCurrentHour(null);
@@ -404,7 +373,10 @@ export default function ShiftPlannerPage() {
         (sum, shift) => sum + (shift.end - shift.start) / (1000 * 60 * 60),
         0,
       );
-      if (existingHours + newHours > 8) {
+      if (
+        !validation.ok &&
+        validation.code === SHIFT_VALIDATION_ERROR.EXCEEDS_HOURS
+      ) {
         alert(
           `Adding this shift would exceed 8 hours for this day. Already scheduled: ${existingHours}h.`,
         );

@@ -18,22 +18,12 @@ import {
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
+import { formatDateTime, toDate, toDayKey } from "../utils/dateTime";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-  where,
-} from "firebase/firestore";
-import { db } from "../firebase";
-import {
-  listProjectMaterials,
-  listTaskMaterialAllocations,
-} from "../utils/materialsRepository";
+  clockInWorker,
+  clockOutWorker,
+  loadWorkerDashboardData,
+} from "../utils/workerDashboardService";
 import "../styles/Dashboard.css";
 
 const ROLE_LABELS = {
@@ -47,27 +37,6 @@ const ROLE_COLORS = {
 };
 
 const INITIAL_NOW_MS = Date.now();
-
-function toDate(value) {
-  if (!value) return null;
-  if (typeof value?.toDate === "function") return value.toDate();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
-function formatDateTime(value) {
-  const date = toDate(value);
-  if (!date) return "--";
-  return `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-}
-
-function toDayKey(date) {
-  const d = new Date(date);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 export default function WorkerDashboard() {
   const { currentUser, userProfile, organizationId } = useAuth();
@@ -94,88 +63,14 @@ export default function WorkerDashboard() {
     const load = async () => {
       setLoadingData(true);
       try {
-        const workerSnap = await getDoc(doc(db, "users", currentUid));
-        if (workerSnap.exists()) {
-          setWorkerRecord({ uid: workerSnap.id, ...workerSnap.data() });
-        }
-
-        const projectQ = query(
-          collection(db, "projects"),
-          where("organizationId", "==", organizationId),
-        );
-        const projectSnap = await getDocs(projectQ);
-        const nameMap = {};
-        const activeProjectIds = new Set();
-        projectSnap.forEach((docSnap) => {
-          const projectData = docSnap.data() || {};
-          nameMap[docSnap.id] = projectData.name || "Project";
-          const projectStatus = projectData.status || "active";
-          if (projectStatus === "active") {
-            activeProjectIds.add(docSnap.id);
-          }
+        const snapshot = await loadWorkerDashboardData({
+          currentUid,
+          organizationId,
         });
-        setProjectNames(nameMap);
-
-        const taskQ = query(
-          collection(db, "tasks"),
-          where("assignedWorkerId", "==", currentUid),
-        );
-        const taskSnap = await getDocs(taskQ);
-        const taskList = taskSnap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter(
-            (task) =>
-              task.organizationId === organizationId &&
-              activeProjectIds.has(task.projectId),
-          )
-          .sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
-        setTasks(taskList);
-
-        if (taskList.length === 0) {
-          setTaskMaterialsByTaskId({});
-        } else {
-          const uniqueProjectIds = Array.from(
-            new Set(taskList.map((task) => task.projectId).filter(Boolean)),
-          );
-
-          const materialMapsByProjectId = {};
-          await Promise.all(
-            uniqueProjectIds.map(async (pid) => {
-              const materials = await listProjectMaterials({
-                organizationId,
-                projectId: pid,
-              });
-              materialMapsByProjectId[pid] = Object.fromEntries(
-                materials.map((material) => [material.id, material]),
-              );
-            }),
-          );
-
-          const entries = await Promise.all(
-            taskList.map(async (task) => {
-              const allocations = await listTaskMaterialAllocations({
-                organizationId,
-                projectId: task.projectId,
-                taskId: task.id,
-              });
-
-              const materialsById = materialMapsByProjectId[task.projectId] || {};
-              const resolved = allocations.map((allocation) => {
-                const material = materialsById[allocation.materialId] || {};
-                return {
-                  materialId: allocation.materialId,
-                  quantityRequired: allocation.quantityRequired,
-                  materialName: material.name || "Material",
-                  unit: material.unit || "unit",
-                };
-              });
-
-              return [task.id, resolved];
-            }),
-          );
-
-          setTaskMaterialsByTaskId(Object.fromEntries(entries));
-        }
+        setWorkerRecord(snapshot.workerRecord);
+        setProjectNames(snapshot.projectNames);
+        setTasks(snapshot.tasks);
+        setTaskMaterialsByTaskId(snapshot.taskMaterialsByTaskId);
       } catch (err) {
         console.error("Worker dashboard load:", err);
       }
@@ -220,11 +115,7 @@ export default function WorkerDashboard() {
     setClockActionLoading(true);
     setClockMessage("");
     try {
-      await updateDoc(doc(db, "users", currentUid), {
-        isClockedIn: true,
-        clockedInAt: serverTimestamp(),
-        clockedOutAt: null,
-      });
+      await clockInWorker({ currentUid });
       setWorkerRecord((prev) => ({
         ...(prev || {}),
         isClockedIn: true,
@@ -244,27 +135,13 @@ export default function WorkerDashboard() {
     if (!isClockedIn) return;
     setClockActionLoading(true);
     setClockMessage("");
-    const clockOutDate = new Date();
     try {
-      const clockInDate = toDate(workerRecord?.clockedInAt) || clockOutDate;
-      const dayKey = toDayKey(clockInDate);
-      await updateDoc(doc(db, "users", currentUid), {
-        isClockedIn: false,
-        clockedOutAt: serverTimestamp(),
+      const { clockOutDate } = await clockOutWorker({
+        currentUid,
+        organizationId,
+        workerName: userProfile?.name,
+        clockInAt: workerRecord?.clockedInAt,
       });
-      await setDoc(
-        doc(db, "workerAttendance", `${currentUid}_${dayKey}`),
-        {
-          organizationId,
-          workerId: currentUid,
-          workerName: userProfile?.name || "Worker",
-          dayKey,
-          clockInAt: clockInDate,
-          clockOutAt: clockOutDate,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
       setWorkerRecord((prev) => ({
         ...(prev || {}),
         isClockedIn: false,
