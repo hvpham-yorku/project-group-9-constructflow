@@ -50,7 +50,21 @@ A work management system for plumbing and electrical work in construction.
 
 ## How to run
 
-To run the app locally:
+To run this app locally, you'll need:
+
+- **Node.js** (v18 or higher)
+- **npm** (comes with Node.js)
+
+You can download Node.js (includes npm) from [nodejs.org](https://nodejs.org/).
+
+To check your version:
+
+```bash
+node --version
+npm --version
+```
+
+After you've downloaded Node.js:
 
 ```bash
 cd constructflow
