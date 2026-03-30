@@ -31,7 +31,12 @@ Here is the image: [uml-class-diagram.png](deliverables/uml-class-diagram.png).
 
 ### ITR3
 
+The implemented and tested user stories (Lab 5 Activity 1 doc): [User Stories](deliverables/EECS2311-SectionZ-Team9-TakeHomeAssignment.pdf).  
+Architecture Diagram: [Diagram](deliverables/architecture-sketch.png).
+
 ### Delivery 2
+
+UML Class Diagram: [Diagram](deliverables/updated-class-diagram.png).
 
 ---
 
