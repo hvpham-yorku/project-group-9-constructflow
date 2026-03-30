@@ -30,64 +30,16 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import {
+  getProjectCompletion,
+  getTaskCompletion,
+  getEffectiveProjectStatus,
+} from "../utils/projectProgress";
 import "../styles/ProjectsPage.css";
 
 const STATUS_COLORS = {
   active: { bg: "#dcfce7", fg: "#16a34a" },
   completed: { bg: "#dbeafe", fg: "#1d4ed8" },
-};
-
-const countBlueprintUnits = (objects = {}) => {
-  const stats = { total: 0, completed: 0 };
-
-  Object.values(objects).forEach((obj) => {
-    const pointTasks = Array.isArray(obj?.pointTasks) ? obj.pointTasks : [];
-    const requiredPointTasks = pointTasks.filter((task) => task?.requiredType);
-
-    if (requiredPointTasks.length > 0) {
-      stats.total += requiredPointTasks.length;
-      stats.completed += requiredPointTasks.filter((task) => task.completed).length;
-      return;
-    }
-
-    stats.total += 1;
-    if (obj?.completed) stats.completed += 1;
-  });
-
-  return stats;
-};
-
-const getBlueprintCompletion = (blueprint) => {
-  const { total, completed } = countBlueprintUnits(blueprint?.objects || {});
-  if (total === 0) return 0;
-  return Math.round((completed / total) * 100);
-};
-
-const getTaskCompletion = (taskId, blueprints) => {
-  const taskBlueprints = blueprints.filter((blueprint) => blueprint.taskId === taskId);
-  if (taskBlueprints.length === 0) return 0;
-  const totalPercentage = taskBlueprints.reduce(
-    (sum, blueprint) => sum + getBlueprintCompletion(blueprint),
-    0,
-  );
-  return Math.round(totalPercentage / taskBlueprints.length);
-};
-
-const getProjectCompletion = (projectTasks = [], blueprints = []) => {
-  if (projectTasks.length === 0) return 0;
-  const totalTaskCompletion = projectTasks.reduce(
-    (sum, task) => sum + getTaskCompletion(task.id, blueprints),
-    0,
-  );
-  return Math.round(totalTaskCompletion / projectTasks.length);
-};
-
-const getEffectiveProjectStatus = (project) => {
-  const completion = Number(project?.completion);
-  if (Number.isFinite(completion) && completion >= 100) {
-    return "completed";
-  }
-  return project?.status || "active";
 };
 
 export default function ProjectsPage() {
@@ -129,7 +81,10 @@ export default function ProjectsPage() {
         where("organizationId", "==", organizationId),
       );
       const blueprintSnap = await getDocs(blueprintQ);
-      const allOrgBlueprints = blueprintSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const allOrgBlueprints = blueprintSnap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
 
       if (!isManager && userProfile?.uid) {
         const workerTaskQ = query(
@@ -161,7 +116,9 @@ export default function ProjectsPage() {
         const completion = getProjectCompletion(projectTasks, allOrgBlueprints);
         const allTasksCompleted =
           projectTasks.length > 0 &&
-          projectTasks.every((task) => getTaskCompletion(task.id, allOrgBlueprints) >= 100);
+          projectTasks.every(
+            (task) => getTaskCompletion(task.id, allOrgBlueprints) >= 100,
+          );
 
         return {
           ...project,
@@ -175,7 +132,9 @@ export default function ProjectsPage() {
         const statusUpdates = withAutoStatus
           .filter((project) => project._storedStatus !== project.status)
           .map((project) =>
-            updateDoc(doc(db, "projects", project.id), { status: project.status }),
+            updateDoc(doc(db, "projects", project.id), {
+              status: project.status,
+            }),
           );
         if (statusUpdates.length > 0) {
           await Promise.allSettled(statusUpdates);
@@ -328,7 +287,10 @@ export default function ProjectsPage() {
                       <p className="project-card-desc">{project.description}</p>
                     )}
 
-                    <div className="project-progress" aria-label={`Project progress ${project.completion || 0}%`}>
+                    <div
+                      className="project-progress"
+                      aria-label={`Project progress ${project.completion || 0}%`}
+                    >
                       <div className="project-progress-copy">
                         <span>Progress</span>
                         <strong>{project.completion || 0}%</strong>

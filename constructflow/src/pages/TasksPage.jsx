@@ -10,7 +10,12 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
-import { MdArrowBack, MdAssignment, MdSchedule, MdPerson } from "react-icons/md";
+import {
+  MdArrowBack,
+  MdAssignment,
+  MdSchedule,
+  MdPerson,
+} from "react-icons/md";
 import Header from "../components/Header";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../contexts/AuthContext";
@@ -23,48 +28,12 @@ import {
   removeMaterial,
   updateMaterial,
 } from "../utils/materialsRepository";
-import { DEFAULT_MATERIAL_UNIT, MATERIAL_UNITS } from "../utils/materialsConstants";
+import {
+  DEFAULT_MATERIAL_UNIT,
+  MATERIAL_UNITS,
+} from "../utils/materialsConstants";
+import { getTaskCompletion } from "../utils/projectProgress";
 import "../styles/TasksPage.css";
-
-const countBlueprintUnits = (objects = {}) => {
-  const stats = { total: 0, completed: 0 };
-
-  Object.values(objects).forEach((obj) => {
-    const pointTasks = Array.isArray(obj?.pointTasks) ? obj.pointTasks : [];
-    const requiredPointTasks = pointTasks.filter((task) => task?.requiredType);
-
-    if (requiredPointTasks.length > 0) {
-      stats.total += requiredPointTasks.length;
-      stats.completed += requiredPointTasks.filter((task) => task.completed).length;
-      return;
-    }
-
-    stats.total += 1;
-    if (obj?.completed) {
-      stats.completed += 1;
-    }
-  });
-
-  return stats;
-};
-
-const getBlueprintCompletion = (blueprint) => {
-  const { total, completed } = countBlueprintUnits(blueprint?.objects || {});
-  if (total === 0) return 0;
-  return Math.round((completed / total) * 100);
-};
-
-const getTaskCompletion = (taskId, blueprints) => {
-  const taskBlueprints = blueprints.filter((blueprint) => blueprint.taskId === taskId);
-  if (taskBlueprints.length === 0) return 0;
-
-  const totalPercentage = taskBlueprints.reduce(
-    (sum, blueprint) => sum + getBlueprintCompletion(blueprint),
-    0,
-  );
-
-  return Math.round(totalPercentage / taskBlueprints.length);
-};
 
 export default function TasksPage() {
   const { projectId } = useParams();
@@ -85,7 +54,9 @@ export default function TasksPage() {
   const [assignMaterialByTaskId, setAssignMaterialByTaskId] = useState({});
   const [assignQtyByTaskId, setAssignQtyByTaskId] = useState({});
   const [assigningTaskId, setAssigningTaskId] = useState("");
-  const [taskMaterialNoticeByTaskId, setTaskMaterialNoticeByTaskId] = useState({});
+  const [taskMaterialNoticeByTaskId, setTaskMaterialNoticeByTaskId] = useState(
+    {},
+  );
 
   const [newMaterialName, setNewMaterialName] = useState("");
   const [newMaterialUnit, setNewMaterialUnit] = useState(DEFAULT_MATERIAL_UNIT);
@@ -94,7 +65,9 @@ export default function TasksPage() {
 
   const [editingMaterialId, setEditingMaterialId] = useState("");
   const [editMaterialName, setEditMaterialName] = useState("");
-  const [editMaterialUnit, setEditMaterialUnit] = useState(DEFAULT_MATERIAL_UNIT);
+  const [editMaterialUnit, setEditMaterialUnit] = useState(
+    DEFAULT_MATERIAL_UNIT,
+  );
   const [editMaterialQty, setEditMaterialQty] = useState("0");
   const [updatingMaterial, setUpdatingMaterial] = useState(false);
   const [deletingMaterialId, setDeletingMaterialId] = useState("");
@@ -137,7 +110,10 @@ export default function TasksPage() {
   );
 
   const materialsById = useMemo(
-    () => Object.fromEntries(safeProjectMaterials.map((material) => [material.id, material])),
+    () =>
+      Object.fromEntries(
+        safeProjectMaterials.map((material) => [material.id, material]),
+      ),
     [safeProjectMaterials],
   );
 
@@ -156,7 +132,10 @@ export default function TasksPage() {
         setProject(null);
       }
 
-      const taskQ = query(collection(db, "tasks"), where("projectId", "==", projectId));
+      const taskQ = query(
+        collection(db, "tasks"),
+        where("projectId", "==", projectId),
+      );
       const taskSnap = await getDocs(taskQ);
       const list = taskSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => (a.dueDate || "").localeCompare(b.dueDate || ""));
@@ -212,7 +191,10 @@ export default function TasksPage() {
     setLoadingMaterials(true);
     setMaterialsError("");
     try {
-      const materials = await listProjectMaterials({ organizationId, projectId });
+      const materials = await listProjectMaterials({
+        organizationId,
+        projectId,
+      });
       materials.sort((a, b) =>
         String(a?.name || "").localeCompare(String(b?.name || "")),
       );
@@ -259,12 +241,7 @@ export default function TasksPage() {
 
   const handleCreateTask = async (e) => {
     e.preventDefault();
-    if (
-      !title.trim() ||
-      !description.trim() ||
-      !dueDate ||
-      !assignedWorkerId
-    ) {
+    if (!title.trim() || !description.trim() || !dueDate || !assignedWorkerId) {
       setError("Please fill title, description, due date, and assignee.");
       return;
     }
@@ -417,12 +394,20 @@ export default function TasksPage() {
     }
 
     if (qty <= 0) {
-      setTaskMaterialNotice(task.id, "Quantity must be greater than zero.", "error");
+      setTaskMaterialNotice(
+        task.id,
+        "Quantity must be greater than zero.",
+        "error",
+      );
       return;
     }
 
     const existing = taskAllocationsByTaskId[task.id] || [];
-    if (existing.some((allocation) => allocation.materialId === selectedMaterialId)) {
+    if (
+      existing.some(
+        (allocation) => allocation.materialId === selectedMaterialId,
+      )
+    ) {
       setTaskMaterialNotice(
         task.id,
         "This material is already attached to the task.",
@@ -433,7 +418,11 @@ export default function TasksPage() {
 
     const selectedMaterial = materialsById[selectedMaterialId];
     if (!selectedMaterial) {
-      setTaskMaterialNotice(task.id, "Selected material is not available.", "error");
+      setTaskMaterialNotice(
+        task.id,
+        "Selected material is not available.",
+        "error",
+      );
       return;
     }
 
@@ -453,7 +442,9 @@ export default function TasksPage() {
         organizationId,
         projectId,
         taskId: task.id,
-        allocations: [{ materialId: selectedMaterialId, quantityRequired: qty }],
+        allocations: [
+          { materialId: selectedMaterialId, quantityRequired: qty },
+        ],
         performedBy: currentUser?.uid || "",
         note: `Attached to task ${task.title}`,
       });
@@ -463,7 +454,11 @@ export default function TasksPage() {
       setAssignQtyByTaskId((prev) => ({ ...prev, [task.id]: "" }));
       await Promise.all([loadProjectMaterials(), loadTaskMaterialMap(tasks)]);
     } catch (err) {
-      setTaskMaterialNotice(task.id, err.message || "Failed to attach material.", "error");
+      setTaskMaterialNotice(
+        task.id,
+        err.message || "Failed to attach material.",
+        "error",
+      );
     }
     setAssigningTaskId("");
   };
@@ -484,7 +479,10 @@ export default function TasksPage() {
                   : "Tasks assigned to you by your manager."}
               </p>
             </div>
-            <button className="btn-secondary" onClick={() => navigate("/projects")}>
+            <button
+              className="btn-secondary"
+              onClick={() => navigate("/projects")}
+            >
               <MdArrowBack /> Back to Projects
             </button>
           </div>
@@ -565,7 +563,10 @@ export default function TasksPage() {
             </div>
 
             {isManager && (
-              <form className="material-create-form" onSubmit={handleCreateMaterial}>
+              <form
+                className="material-create-form"
+                onSubmit={handleCreateMaterial}
+              >
                 <div className="material-create-grid">
                   <input
                     type="text"
@@ -610,13 +611,17 @@ export default function TasksPage() {
             )}
 
             {materialNotice && (
-              <p className={`material-notice ${materialNoticeType}`}>{materialNotice}</p>
+              <p className={`material-notice ${materialNoticeType}`}>
+                {materialNotice}
+              </p>
             )}
 
             {loadingMaterials ? (
               <div className="tasks-empty">Loading inventory…</div>
             ) : materialsError ? (
-              <div className="tasks-empty tasks-empty-error">{materialsError}</div>
+              <div className="tasks-empty tasks-empty-error">
+                {materialsError}
+              </div>
             ) : safeProjectMaterials.length === 0 ? (
               <div className="tasks-empty">
                 No materials in this project yet.
@@ -641,7 +646,9 @@ export default function TasksPage() {
                               className="inventory-edit-input"
                               type="text"
                               value={editMaterialName}
-                              onChange={(e) => setEditMaterialName(e.target.value)}
+                              onChange={(e) =>
+                                setEditMaterialName(e.target.value)
+                              }
                             />
                           ) : (
                             material.name
@@ -656,12 +663,16 @@ export default function TasksPage() {
                                 min="0"
                                 step="0.01"
                                 value={editMaterialQty}
-                                onChange={(e) => setEditMaterialQty(e.target.value)}
+                                onChange={(e) =>
+                                  setEditMaterialQty(e.target.value)
+                                }
                               />
                               <select
                                 className="inventory-edit-input"
                                 value={editMaterialUnit}
-                                onChange={(e) => setEditMaterialUnit(e.target.value)}
+                                onChange={(e) =>
+                                  setEditMaterialUnit(e.target.value)
+                                }
                               >
                                 {MATERIAL_UNITS.map((unit) => (
                                   <option key={unit} value={unit}>
@@ -727,7 +738,9 @@ export default function TasksPage() {
                                   onClick={() => handleDeleteMaterial(material)}
                                   disabled={deletingMaterialId === material.id}
                                 >
-                                  {deletingMaterialId === material.id ? "Removing…" : "Remove"}
+                                  {deletingMaterialId === material.id
+                                    ? "Removing…"
+                                    : "Remove"}
                                 </button>
                               </>
                             )}
@@ -772,7 +785,10 @@ export default function TasksPage() {
                         <MdSchedule /> Due: {task.dueDate || "—"}
                       </span>
                       <span>
-                        <MdPerson /> Worker: {task.assignedWorkerName || workersById[task.assignedWorkerId]?.name || "—"}
+                        <MdPerson /> Worker:{" "}
+                        {task.assignedWorkerName ||
+                          workersById[task.assignedWorkerId]?.name ||
+                          "—"}
                       </span>
                     </div>
 
@@ -780,20 +796,26 @@ export default function TasksPage() {
                       <h5>Task Materials</h5>
 
                       {(taskAllocationsByTaskId[task.id] || []).length === 0 ? (
-                        <p className="task-materials-empty">No materials attached.</p>
+                        <p className="task-materials-empty">
+                          No materials attached.
+                        </p>
                       ) : (
                         <ul className="task-materials-list">
-                          {(taskAllocationsByTaskId[task.id] || []).map((allocation) => {
-                            const material = materialsById[allocation.materialId];
-                            return (
-                              <li key={`${task.id}-${allocation.materialId}`}>
-                                <span>{material?.name || "Material"}</span>
-                                <strong>
-                                  {allocation.quantityRequired} {material?.unit || "unit"}
-                                </strong>
-                              </li>
-                            );
-                          })}
+                          {(taskAllocationsByTaskId[task.id] || []).map(
+                            (allocation) => {
+                              const material =
+                                materialsById[allocation.materialId];
+                              return (
+                                <li key={`${task.id}-${allocation.materialId}`}>
+                                  <span>{material?.name || "Material"}</span>
+                                  <strong>
+                                    {allocation.quantityRequired}{" "}
+                                    {material?.unit || "unit"}
+                                  </strong>
+                                </li>
+                              );
+                            },
+                          )}
                         </ul>
                       )}
 
@@ -812,7 +834,8 @@ export default function TasksPage() {
                             <option value="">Select material</option>
                             {safeProjectMaterials.map((material) => (
                               <option key={material.id} value={material.id}>
-                                {material.name} ({material.quantityOnHand} {material.unit} available)
+                                {material.name} ({material.quantityOnHand}{" "}
+                                {material.unit} available)
                               </option>
                             ))}
                           </select>
@@ -836,15 +859,22 @@ export default function TasksPage() {
                             type="button"
                             className="btn-secondary"
                             onClick={() => handleAttachMaterialToTask(task)}
-                            disabled={assigningTaskId === task.id || safeProjectMaterials.length === 0}
+                            disabled={
+                              assigningTaskId === task.id ||
+                              safeProjectMaterials.length === 0
+                            }
                           >
-                            {assigningTaskId === task.id ? "Attaching…" : "Attach"}
+                            {assigningTaskId === task.id
+                              ? "Attaching…"
+                              : "Attach"}
                           </button>
                         </div>
                       )}
 
                       {taskMaterialNoticeByTaskId[task.id]?.message && (
-                        <p className={`task-material-notice ${taskMaterialNoticeByTaskId[task.id]?.type || "info"}`}>
+                        <p
+                          className={`task-material-notice ${taskMaterialNoticeByTaskId[task.id]?.type || "info"}`}
+                        >
                           {taskMaterialNoticeByTaskId[task.id].message}
                         </p>
                       )}
