@@ -48,6 +48,9 @@ A work management system for plumbing and electrical work in construction.
 
 ![3-layer Architecture Image](deliverables/architecture-sketch.png)
 
+##
+Showing the product to the customer: https://youtu.be/eGXfIey8c9c
+
 ## How to run
 
 To run this app locally, you'll need:
