@@ -36,7 +36,9 @@ Architecture Diagram: [Diagram](deliverables/architecture-sketch.png).
 
 ### Delivery 2
 
-UML Class Diagram: [Diagram](deliverables/updated-class-diagram.png).
+UML Class Diagram: [Diagram](deliverables/updated-class-diagram.png).   
+Second customer interview: https://youtu.be/eGXfIey8c9c [![YouTube](https://img.shields.io/badge/YouTube-FF0000?logo=youtube&logoColor=white)](https://youtu.be/eGXfIey8c9c)    
+Peer Evaluation Form: [Delivery 2 Peer Evaluation Form](deliverables/EECS2311Z-Delivery2-PeerReview-Group9.pdf)
 
 ---
 
@@ -47,9 +49,6 @@ A work management system for plumbing and electrical work in construction.
 ## 3-layer Architecture Sketch
 
 ![3-layer Architecture Image](deliverables/architecture-sketch.png)
-
-##
-Showing the product to the customer: https://youtu.be/eGXfIey8c9c
 
 ## How to run
 
